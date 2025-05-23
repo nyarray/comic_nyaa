@@ -71,10 +71,10 @@ class MainViewState extends State<MainView> with TickerProviderStateMixin {
 
   // final FloatingSearchBarController _floatingSearchBarController =
   //     FloatingSearchBarController();
-  final List<GalleryView> _gallerys = [];
+  final List<GalleryView> _galleryList = [];
   ScrollController? _galleryScrollController;
   List<Site> _sites = [];
-  List<Tag> _autosuggest = [];
+  List<Tag> _autoSuggest = [];
   int _currentTabIndex = 0;
   int _lastScrollPosition = 0;
   String _keywords = '';
@@ -138,18 +138,18 @@ class MainViewState extends State<MainView> with TickerProviderStateMixin {
   }
 
   GalleryView? get _currentTab {
-    return _gallerys.isNotEmpty ? _gallerys[_currentTabIndex] : null;
+    return _galleryList.isNotEmpty ? _galleryList[_currentTabIndex] : null;
   }
 
   void _addTab(Site site) {
-    _gallerys.add(_buildTab(site));
+    _galleryList.add(_buildTab(site));
   }
 
   void _removeTab(int index) {
     setState(() {
-      _gallerys.removeAt(index);
-      if (_currentTabIndex > _gallerys.length - 1) {
-        _currentTabIndex = _gallerys.length - 1;
+      _galleryList.removeAt(index);
+      if (_currentTabIndex > _galleryList.length - 1) {
+        _currentTabIndex = _galleryList.length - 1;
       }
     });
   }
@@ -158,7 +158,7 @@ class MainViewState extends State<MainView> with TickerProviderStateMixin {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         // Remove old scroll listener
-        for (var item in _gallerys) {
+        for (var item in _galleryList) {
           item.controller.scrollController?.removeListener(_onGalleryScroll);
         }
         _galleryScrollController = _currentTab?.controller.scrollController;
@@ -253,7 +253,7 @@ class MainViewState extends State<MainView> with TickerProviderStateMixin {
       children: [
         // Column(
         //   children: [
-        _gallerys.isNotEmpty
+        _galleryList.isNotEmpty
             ? NyaaTabView(
                 position: _currentTabIndex,
                 onPositionChange: (int index) {
@@ -264,7 +264,7 @@ class MainViewState extends State<MainView> with TickerProviderStateMixin {
                   //     _currentTab?.controller.keywords ?? '';
                 },
                 onScroll: (double value) {},
-                itemCount: _gallerys.length,
+                itemCount: _galleryList.length,
                 isScrollToNewTab: true,
                 color: _getTabColor(_currentTabIndex)[100],
                 tabBarColor: _getTabColor(_currentTabIndex)[200],
@@ -276,11 +276,11 @@ class MainViewState extends State<MainView> with TickerProviderStateMixin {
                     ],
                     borderRadius: BorderRadius.all(Radius.circular(20))),
                 pageBuilder: (BuildContext context, int index) =>
-                    _gallerys[index],
+                    _galleryList[index],
                 tabBuilder: (BuildContext context, int index) {
                   return InkWell(
                       onLongPress: () {
-                        if (_gallerys.length > 1) {
+                        if (_galleryList.length > 1) {
                           setState(() => _removeTab(index));
                         } else {
                           Fluttertoast.showToast(msg: '您不能删除最后一个标签页');
@@ -301,7 +301,7 @@ class MainViewState extends State<MainView> with TickerProviderStateMixin {
                                   bottom: 8,
                                   right: _currentTabIndex == index ? 8 : 0),
                               child: SimpleNetworkImage(
-                                  _gallerys[index].site.icon ?? '',
+                                  _galleryList[index].site.icon ?? '',
                                   fit: BoxFit.contain,
                                   clearMemoryCacheIfFailed: false),
                             ),
@@ -312,7 +312,7 @@ class MainViewState extends State<MainView> with TickerProviderStateMixin {
                                     child: MarqueeWidget(
                                         direction: Axis.horizontal,
                                         child: Text(
-                                            _gallerys[index].site.name ??
+                                            _galleryList[index].site.name ??
                                                 'unknown',
                                             overflow: TextOverflow.ellipsis,
                                             maxLines: 1,
@@ -331,10 +331,10 @@ class MainViewState extends State<MainView> with TickerProviderStateMixin {
   }
 
   GalleryView _buildTab(Site site) {
-    final color = _getTabColor(_gallerys.length);
+    final color = _getTabColor(_galleryList.length);
     return GalleryView(
       site: site,
-      heroKey: _gallerys.length.toString(),
+      heroKey: _galleryList.length.toString(),
       color: color,
       empty: EmptyData(
         text: '无可用数据',
@@ -367,21 +367,19 @@ class MainViewState extends State<MainView> with TickerProviderStateMixin {
               ));
   }
 
-  // static _queryAutosuggest(Tuple3<SendPort, String, String> message) async {
-  //   final autosuggest = await YandereAutosuggest.instance
-  //       .queryAutoSuggest(message.item2, message.item3);
-  //   message.item1.send(
-  //       autosuggest.length > 20 ? autosuggest.sublist(0, 20) : autosuggest);
-  // }
-
   Widget _buildFloatingSearchBar() {
     final isPortrait =
         MediaQuery.of(context).orientation == Orientation.portrait;
+    final topPadding = MediaQuery.of(context).padding.top;
+    final controller = SearchController();
     return Column(children: [
       Padding(
-          padding: const EdgeInsets.fromLTRB(16, 32, 16, 0),
+          padding: EdgeInsets.fromLTRB(8, topPadding, 8, 0),
           child: SearchAnchor(
+            // viewLeading: const Text('todo'),
+            searchController: controller,
               viewHintText: 'Input...',
+
               viewOnChanged: (query) async {
                 print('QUERY: $query');
                 _keywords = query;
@@ -394,20 +392,21 @@ class MainViewState extends State<MainView> with TickerProviderStateMixin {
                 final result = await SearchAutoSuggest.instance
                     .queryAutoSuggest(word, limit: limit);
                 print('RESULT:: $result');
-                setState(() => _autosuggest = result);
+                setState(() => _autoSuggest = result);
               },
-              viewOnSubmitted: (query) {
-                _keywords = query;
-                _onSearch(_keywords);
-
-              },
+              // viewOnSubmitted: (query) {
+              //   _keywords = query;
+              //   _onSearch(_keywords);
+              //
+              // },
               builder: (BuildContext context, SearchController controller) {
                 return SearchBar(
+
                     hintText: 'Search...',
                     controller: controller,
-                    onChanged: (query) {
-                      controller.openView();
-                    },
+                    // onChanged: (query) {
+                    //   controller.openView();
+                    // },
                     onTap: () => controller.openView(),
                     leading: Padding(
                       padding: const EdgeInsets.only(left: 8),
@@ -427,14 +426,19 @@ class MainViewState extends State<MainView> with TickerProviderStateMixin {
               },
               suggestionsBuilder:
                   (BuildContext context, SearchController controller) {
-                return _autosuggest
+                return _autoSuggest
                     .map(
                       (suggest) => ListTile(
                         minLeadingWidth: 16,
                         dense: true,
                         visualDensity: VisualDensity.compact,
-                        onTap: () => _onSearch(
-                            _onSuggestQuery(_keywords, suggest.label)),
+                        onTap: () {
+                          final kwd = _onSuggestQuery(_keywords, suggest.label);
+                          _onSearch(kwd);
+                          // controller.text = kwd;
+                          controller.value = TextEditingValue(text: kwd);
+                          controller.closeView(kwd);
+                        },
                         leading: const Icon(
                           Icons.search,
                         ),
@@ -472,7 +476,12 @@ class MainViewState extends State<MainView> with TickerProviderStateMixin {
                               isRounded: true),
                           InkWell(
                               onTap: () {
-                                controller.text = _onSuggestQuery(controller.text, suggest.label);
+                                setState(() {
+                                  final text = _onSuggestQuery(controller.text, suggest.label);
+
+                                controller.text = text;
+                                });
+
                                 // _floatingSearchBarController.query =
                                 //     _onSuggestQuery(
                                 //         _floatingSearchBarController.query,
@@ -517,7 +526,7 @@ class MainViewState extends State<MainView> with TickerProviderStateMixin {
     //       final lastWordIndex = query.lastIndexOf(' ');
     //       final word =
     //           query.substring(lastWordIndex > 0 ? lastWordIndex : 0).trim();
-    //       // print('QUERYYYYY: $word');
+    //       // print('QUERY: $word');
     //       final autosuggest = await SearchAutoSuggest.instance
     //           .queryAutoSuggest(word, limit: limit);
     //       // print('RESULT:: $autosuggest');

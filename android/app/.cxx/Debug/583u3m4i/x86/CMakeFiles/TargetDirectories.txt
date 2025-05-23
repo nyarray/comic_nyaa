@@ -1,0 +1,2 @@
+E:/Projects/@nyarray/comic_nyaa/android/app/.cxx/Debug/583u3m4i/x86/CMakeFiles/edit_cache.dir
+E:/Projects/@nyarray/comic_nyaa/android/app/.cxx/Debug/583u3m4i/x86/CMakeFiles/rebuild_cache.dir
