@@ -27,7 +27,6 @@ class NyaaClient extends http.BaseClient {
     final SecurityContext context = SecurityContext(withTrustedRoots: true);
     context.allowLegacyUnsafeRenegotiation = true;
     final client = HttpClient(context: context);
-    // final client = HttpClient();
     client.badCertificateCallback =
         (X509Certificate cert, String host, int port) {
       return true;

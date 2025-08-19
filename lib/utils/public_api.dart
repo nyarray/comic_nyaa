@@ -1,6 +1,10 @@
 import 'dart:convert';
 
+import 'package:logger/logger.dart';
+
 import '../library/http/http.dart';
+
+final Logger logger = Logger();
 
 class Hitokoto {
   String hitokoto = '';
@@ -17,11 +21,17 @@ class Hitokoto {
 }
 
 Future<String> apiRandomImage() async {
+  try {
+    
   final response = await Http.client
       .get(Uri.parse('https://random-picture.vercel.app/api/?json'));
   final json = Map<String, dynamic>.from(jsonDecode(response.body));
   final url = json['url'].toString();
   return url;
+  } catch (e) {
+    logger.w(e);
+  }
+  return '';
 }
 
 Future<Hitokoto> apiHitokoto() async {

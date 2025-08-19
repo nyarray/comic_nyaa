@@ -15,8 +15,8 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+import 'package:comic_nyaa/utils/message.dart';
 import 'package:flutter/material.dart';
-import 'package:fluttertoast/fluttertoast.dart';
 import 'package:intl/intl.dart';
 
 import 'package:comic_nyaa/library/mio/model/data_origin.dart';
@@ -141,7 +141,7 @@ class DownloadItem extends StatelessWidget {
   }
   Future<void> onRestart(NyaaDownloadTask task) async {
     await task.start();
-    Fluttertoast.showToast(msg: '任务已完成：${task.title}');
+    Message.show(msg: '任务已完成：${task.title}');
     // (await NyaaDownloadManager.instance).restart(tasks.parent);
   }
 

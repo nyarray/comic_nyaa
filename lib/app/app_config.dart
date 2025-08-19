@@ -17,6 +17,7 @@
 
 import 'dart:async';
 import 'dart:io';
+import 'package:path/path.dart' as p;
 
 import 'package:comic_nyaa/utils/extensions.dart';
 import 'package:path_provider/path_provider.dart';
@@ -63,11 +64,15 @@ FutureOr<Directory> _getDownloadPath() async {
   try {
     if (Platform.isIOS) {
       directory = await getApplicationDocumentsDirectory();
-    } else {
+    } else if (Platform.isAndroid) {
       directory = Directory('/storage/emulated/0/Download');
       // Put file in global download folder, if for an unknown reason it didn't exist, we fallback
       // ignore: avoid_slow_async_io
       if (!await directory.exists()) directory = await getExternalStorageDirectory();
+    } else if (Platform.isWindows) {
+      directory = Directory(p.join("download"));
+    } else {
+      directory = Directory(p.join("download"));
     }
   } catch (err) {
     throw(FileSystemException("Cannot get download folder path: $err"));

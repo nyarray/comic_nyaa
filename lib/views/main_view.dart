@@ -16,41 +16,25 @@
  */
 
 import 'dart:async';
-import 'dart:convert';
-import 'dart:isolate';
-import 'dart:math';
-import 'package:comic_nyaa/data/tags/tags_autosuggest.dart';
-import 'package:comic_nyaa/library/mio/label/danbooru_autosuggest.dart';
-import 'package:comic_nyaa/library/mio/label/yandere_autosuggest.dart';
+import 'dart:collection';
+import 'package:collection/collection.dart';
+import 'package:comic_nyaa/utils/fixed_queue.dart';
+import 'package:comic_nyaa/utils/message.dart';
 import 'package:comic_nyaa/utils/flutter_utils.dart';
-import 'package:comic_nyaa/utils/string_extensions.dart';
+import 'package:comic_nyaa/views/search_view.dart';
 import 'package:comic_nyaa/widget/back_control.dart';
 import 'package:comic_nyaa/views/drawer/nyaa_end_drawer.dart';
 import 'package:comic_nyaa/widget/empty_data.dart';
-import 'package:comic_nyaa/widget/nyaa_tag_item.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:fluttertoast/fluttertoast.dart';
-import 'package:collection/collection.dart';
-import 'package:get/get.dart';
-
-// import 'package:material_floating_search_bar/material_floating_search_bar.dart';
-import 'package:comic_nyaa/library/http/http.dart';
 import 'package:comic_nyaa/library/mio/model/site.dart';
 import 'package:comic_nyaa/library/mio/core/site_manager.dart';
-import 'package:comic_nyaa/widget/nyaa_tab_view.dart';
-import 'package:comic_nyaa/widget/simple_network_image.dart';
 import 'package:comic_nyaa/app/app_config.dart';
 import 'package:comic_nyaa/data/download/nyaa_download_manager.dart';
 import 'package:comic_nyaa/models/typed_model.dart';
-import 'package:comic_nyaa/widget/marquee_widget.dart';
 import 'package:comic_nyaa/views/pages/gallery_view.dart';
 
 import 'package:comic_nyaa/data/subscribe/subscribe_manager.dart';
 import 'package:comic_nyaa/views/drawer/nyaa_drawer.dart';
-import 'package:tuple/tuple.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'package:url_launcher/url_launcher_string.dart';
 
 import '../library/mio/model/tag.dart';
 
@@ -71,13 +55,12 @@ class MainViewState extends State<MainView> with TickerProviderStateMixin {
 
   // final FloatingSearchBarController _floatingSearchBarController =
   //     FloatingSearchBarController();
-  final List<GalleryView> _galleryList = [];
-  ScrollController? _galleryScrollController;
+  final RecyclerQueue<GalleryView> _viewQueue = RecyclerQueue(3);
+  ScrollController? _viewScrollController;
   List<Site> _sites = [];
-  List<Tag> _autoSuggest = [];
-  int _currentTabIndex = 0;
+  // List<Tag> _autoSuggest = [];
   int _lastScrollPosition = 0;
-  String _keywords = '';
+  // String _keywords = '';
 
   final _tabColors = [
     Colors.teal,
@@ -88,23 +71,29 @@ class MainViewState extends State<MainView> with TickerProviderStateMixin {
     Colors.pink,
   ];
 
-  MaterialColor _getTabColor(int index) {
-    return _tabColors[index % _tabColors.length];
+  GalleryView? get _view {
+    return _viewQueue.isNotEmpty ? _viewQueue.last : null;
   }
 
+  void _newView(Site site) {
+    setState(() {
+      _viewQueue.add(_buildView(site));
+    });
+  }
+  
   Future<void> _initialize() async {
-    await _checkUpdate();
+    await _checkPluginsUpdate();
     setState(() {
       _sites = SiteManager.sites.values.toList();
       // 打开默认标签
       if (widget.site != null) {
-        _addTab(widget.site!);
+        _newView(widget.site!);
       } else {
-        _addTab(_sites.firstWhereOrNull((site) => site.id == 920) ?? _sites[0]);
+        _newView(_sites.firstWhereOrNull((site) => site.id == 920) ?? _sites[0]);
       }
 
       _listenGalleryScroll();
-      _currentTab?.controller.onItemSelect = _onGalleryItemSelected;
+      _view?.controller.onItemSelect = _onGalleryItemSelected;
     });
     WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
       if (widget.keywords != null) {
@@ -113,7 +102,7 @@ class MainViewState extends State<MainView> with TickerProviderStateMixin {
     });
   }
 
-  Future<void> _checkUpdate() async {
+  Future<void> _checkPluginsUpdate() async {
     final ruleDir = (await AppConfig.ruleDir);
     await SiteManager.loadFromDirectory(ruleDir);
     if (SiteManager.sites.isEmpty) {
@@ -122,12 +111,12 @@ class MainViewState extends State<MainView> with TickerProviderStateMixin {
   }
 
   Future<void> downloadSelections() async {
-    List<TypedModel> items = _currentTab!.controller.selects.values.toList();
-    Fluttertoast.showToast(msg: '${items.length}个任务已添加');
+    List<TypedModel> items = _view!.controller.selects.values.toList();
+    Message.show(msg: '${items.length}个任务已添加');
 
     (await NyaaDownloadManager.instance).addAll(items);
     setState(() {
-      _currentTab?.controller.clearSelection();
+      _view?.controller.clearSelection();
     });
   }
 
@@ -137,64 +126,45 @@ class MainViewState extends State<MainView> with TickerProviderStateMixin {
     super.initState();
   }
 
-  GalleryView? get _currentTab {
-    return _galleryList.isNotEmpty ? _galleryList[_currentTabIndex] : null;
-  }
-
-  void _addTab(Site site) {
-    _galleryList.add(_buildTab(site));
-  }
-
-  void _removeTab(int index) {
-    setState(() {
-      _galleryList.removeAt(index);
-      if (_currentTabIndex > _galleryList.length - 1) {
-        _currentTabIndex = _galleryList.length - 1;
-      }
-    });
-  }
-
   void _listenGalleryScroll() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         // Remove old scroll listener
-        for (var item in _galleryList) {
-          item.controller.scrollController?.removeListener(_onGalleryScroll);
-        }
-        _galleryScrollController = _currentTab?.controller.scrollController;
-        if (_galleryScrollController == null) return;
+        // for (var item in _galleryList) {
+        //   item.controller.scrollController?.removeListener(_onGalleryScroll);
+        // }
+        _viewScrollController = _view?.controller.scrollController;
+        if (_viewScrollController == null) return;
         _onGalleryScroll();
-        _galleryScrollController!.addListener(_onGalleryScroll);
+        _viewScrollController!.addListener(_onGalleryScroll);
       }
     });
   }
 
   void _onGalleryScroll() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_galleryScrollController == null ||
-          _galleryScrollController?.positions.isNotEmpty != true) return;
-      if (_galleryScrollController!.position.pixels < 128) {
+      if (_viewScrollController == null ||
+          _viewScrollController?.positions.isNotEmpty != true) {
+        return;
+      }
+      if (_viewScrollController!.position.pixels < 128) {
         // _floatingSearchBarController.isHidden
         //     ? _floatingSearchBarController.show()
         //     : null;
-      } else if (_galleryScrollController!.position.pixels >
+      } else if (_viewScrollController!.position.pixels >
           _lastScrollPosition + 64) {
-        _lastScrollPosition = _galleryScrollController!.position.pixels.toInt();
+        _lastScrollPosition = _viewScrollController!.position.pixels.toInt();
         // _floatingSearchBarController.isVisible
         //     ? _floatingSearchBarController.hide()
         //     : null;
-      } else if (_galleryScrollController!.position.pixels <
+      } else if (_viewScrollController!.position.pixels <
           _lastScrollPosition - 64) {
-        _lastScrollPosition = _galleryScrollController!.position.pixels.toInt();
+        _lastScrollPosition = _viewScrollController!.position.pixels.toInt();
         // _floatingSearchBarController.isHidden
         //     ? _floatingSearchBarController.show()
         //     : null;
       }
     });
-  }
-
-  void _listenGalleryItemSelected() {
-    _currentTab?.controller.onItemSelect = _onGalleryItemSelected;
   }
 
   void _onGalleryItemSelected(Map<int, TypedModel> selects) {
@@ -203,18 +173,8 @@ class MainViewState extends State<MainView> with TickerProviderStateMixin {
 
   void _onSearch(String query) async {
     // _floatingSearchBarController.close();
-    _currentTab?.controller.search?.call(query);
+    _view?.controller.search?.call(query);
     // setState(() => _floatingSearchBarController.query = query);
-  }
-
-  String _onSuggestQuery(String query, [String? suggest]) {
-    print('MainView::_onSuggestQuery ==> query: $query, suggest: $suggest');
-    if (suggest != null) {
-      int lastWordIndex = query.lastIndexOf(' ');
-      lastWordIndex = lastWordIndex > 0 ? lastWordIndex : 0;
-      query = query.substring(0, query.lastIndexOf(' ') + 1) + suggest;
-    }
-    return query;
   }
 
   @override
@@ -222,6 +182,7 @@ class MainViewState extends State<MainView> with TickerProviderStateMixin {
     final view = _buildMain();
     return Scaffold(
       key: globalKey,
+      appBar: _buildAppBar(),
       drawerEdgeDragWidth: 64,
       drawerEnableOpenDragGesture: true,
       endDrawerEnableOpenDragGesture: true,
@@ -241,101 +202,32 @@ class MainViewState extends State<MainView> with TickerProviderStateMixin {
     return NyaaEndDrawer(
       sites: _sites,
       onItemTap: (site) {
-        setState(() => _addTab(site));
+        _newView(site);
+        setState(() => _view);
         globalKey.currentState?.closeEndDrawer();
       },
     );
   }
 
-  Widget _buildMain() {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        // Column(
-        //   children: [
-        _galleryList.isNotEmpty
-            ? NyaaTabView(
-                position: _currentTabIndex,
-                onPositionChange: (int index) {
-                  setState(() => _currentTabIndex = index);
-                  _listenGalleryScroll();
-                  _listenGalleryItemSelected();
-                  // _floatingSearchBarController.query =
-                  //     _currentTab?.controller.keywords ?? '';
-                },
-                onScroll: (double value) {},
-                itemCount: _galleryList.length,
-                isScrollToNewTab: true,
-                color: _getTabColor(_currentTabIndex)[100],
-                tabBarColor: _getTabColor(_currentTabIndex)[200],
-                elevation: 8,
-                indicator: const BoxDecoration(
-                    color: Colors.white70,
-                    boxShadow: [
-                      BoxShadow(color: Colors.black12, blurRadius: 8)
-                    ],
-                    borderRadius: BorderRadius.all(Radius.circular(20))),
-                pageBuilder: (BuildContext context, int index) =>
-                    _galleryList[index],
-                tabBuilder: (BuildContext context, int index) {
-                  return InkWell(
-                      onLongPress: () {
-                        if (_galleryList.length > 1) {
-                          setState(() => _removeTab(index));
-                        } else {
-                          Fluttertoast.showToast(msg: '您不能删除最后一个标签页');
-                        }
-                      },
-                      onTap: () {
-                        setState(() => _currentTabIndex = index);
-                      },
-                      child: AnimatedSize(
-                          duration: const Duration(milliseconds: 200),
-                          curve: Curves.easeOut,
-                          child: Row(children: [
-                            Container(
-                              width: 40,
-                              height: 40,
-                              padding: EdgeInsets.only(
-                                  top: 8,
-                                  bottom: 8,
-                                  right: _currentTabIndex == index ? 8 : 0),
-                              child: SimpleNetworkImage(
-                                  _galleryList[index].site.icon ?? '',
-                                  fit: BoxFit.contain,
-                                  clearMemoryCacheIfFailed: false),
-                            ),
-                            _currentTabIndex == index
-                                ? SizedBox(
-                                    width:
-                                        _currentTabIndex == index ? 96.0 : null,
-                                    child: MarqueeWidget(
-                                        direction: Axis.horizontal,
-                                        child: Text(
-                                            _galleryList[index].site.name ??
-                                                'unknown',
-                                            overflow: TextOverflow.ellipsis,
-                                            maxLines: 1,
-                                            style: const TextStyle(
-                                                fontSize: 16,
-                                                color: Colors.black87))))
-                                : Container()
-                          ])));
-                })
-            : Container(),
-        _buildFloatingSearchBar(),
-      ],
-      //   )
-      // ],
-    );
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+        title: Text(_view?.site.name ?? 'ComicNyaa'),
+        leading: InkWell(
+          child: const Icon(Icons.search),
+          onTap: () => RouteUtil.push(context, _buildFloatingSearchBar()),
+        ));
   }
 
-  GalleryView _buildTab(Site site) {
-    final color = _getTabColor(_galleryList.length);
+  Widget _buildMain() {
+    return _view ?? Container();
+  }
+
+  GalleryView _buildView(Site site) {
+    final color = Colors.white;
     return GalleryView(
       site: site,
-      heroKey: _galleryList.length.toString(),
-      color: color,
+      heroKey: site.id.toString(),
+      // color: color,
       empty: EmptyData(
         text: '无可用数据',
         color: color,
@@ -347,10 +239,10 @@ class MainViewState extends State<MainView> with TickerProviderStateMixin {
   Widget _buildFab() {
     return Container(
         margin: const EdgeInsets.only(bottom: 48),
-        child: _currentTab?.controller.selects.isEmpty == true
+        child: _view?.controller.selects.isEmpty == true
             ? FloatingActionButton(
-                backgroundColor: _getTabColor(_currentTabIndex),
-                onPressed: () => _currentTab?.controller.scrollController
+                backgroundColor: Colors.white,
+                onPressed: () => _view?.controller.scrollController
                     ?.animateTo(0,
                         duration: const Duration(milliseconds: 1000),
                         curve: Curves.ease),
@@ -358,7 +250,7 @@ class MainViewState extends State<MainView> with TickerProviderStateMixin {
                 child: const Icon(Icons.arrow_upward),
               )
             : FloatingActionButton(
-                backgroundColor: _getTabColor(_currentTabIndex),
+                backgroundColor: Colors.white,
                 onPressed: () {
                   downloadSelections();
                 },
@@ -372,131 +264,7 @@ class MainViewState extends State<MainView> with TickerProviderStateMixin {
         MediaQuery.of(context).orientation == Orientation.portrait;
     final topPadding = MediaQuery.of(context).padding.top;
     final controller = SearchController();
-    return Column(children: [
-      Padding(
-          padding: EdgeInsets.fromLTRB(8, topPadding, 8, 0),
-          child: SearchAnchor(
-            // viewLeading: const Text('todo'),
-            searchController: controller,
-              viewHintText: 'Input...',
-
-              viewOnChanged: (query) async {
-                print('QUERY: $query');
-                _keywords = query;
-                const limit = 20;
-                final lastWordIndex = query.lastIndexOf(' ');
-                final word = query
-                    .substring(lastWordIndex > 0 ? lastWordIndex : 0)
-                    .trim();
-                print('QUERY: $word');
-                final result = await SearchAutoSuggest.instance
-                    .queryAutoSuggest(word, limit: limit);
-                print('RESULT:: $result');
-                setState(() => _autoSuggest = result);
-              },
-              // viewOnSubmitted: (query) {
-              //   _keywords = query;
-              //   _onSearch(_keywords);
-              //
-              // },
-              builder: (BuildContext context, SearchController controller) {
-                return SearchBar(
-
-                    hintText: 'Search...',
-                    controller: controller,
-                    // onChanged: (query) {
-                    //   controller.openView();
-                    // },
-                    onTap: () => controller.openView(),
-                    leading: Padding(
-                      padding: const EdgeInsets.only(left: 8),
-                      child: SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: SimpleNetworkImage(
-                              _currentTab?.site.icon ?? '',
-                              error: Text(
-                                _currentTab?.site.name?.substring(0, 1) ?? '',
-                                style: const TextStyle(
-                                    fontFamily: AppConfig.uiFontFamily,
-                                    fontSize: 18,
-                                    color: Colors.teal),
-                              ))),
-                    ));
-              },
-              suggestionsBuilder:
-                  (BuildContext context, SearchController controller) {
-                return _autoSuggest
-                    .map(
-                      (suggest) => ListTile(
-                        minLeadingWidth: 16,
-                        dense: true,
-                        visualDensity: VisualDensity.compact,
-                        onTap: () {
-                          final kwd = _onSuggestQuery(_keywords, suggest.label);
-                          _onSearch(kwd);
-                          // controller.text = kwd;
-                          controller.value = TextEditingValue(text: kwd);
-                          controller.closeView(kwd);
-                        },
-                        leading: const Icon(
-                          Icons.search,
-                        ),
-                        title: Text(
-                          suggest.label,
-                          style: TextStyle(
-                              fontFamily: AppConfig.uiFontFamily,
-                              fontSize: 16,
-                              color: suggest.type != null
-                                  ? ColorUtil.fromHex(suggest.type!.color)
-                                  : null),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        subtitle:
-                            suggest.alias != null && suggest.alias!.isNotEmpty
-                                ? MarqueeWidget(
-                                    child: Text(
-                                    suggest.alias!.replaceAll(',', ', '),
-                                    style: const TextStyle(
-                                        fontFamily: AppConfig.uiFontFamily,
-                                        fontSize: 14,
-                                        color: Colors.black54),
-                                  ))
-                                : null,
-                        trailing:
-                            Row(mainAxisSize: MainAxisSize.min, children: [
-                          NyaaTagItem(
-                              text: suggest.type?.name ?? '',
-                              textStyle: const TextStyle(
-                                  fontSize: 12, color: Colors.white),
-                              color: suggest.type != null
-                                  ? ColorUtil.fromHex(suggest.type!.color)
-                                  : null,
-                              isRounded: true),
-                          InkWell(
-                              onTap: () {
-                                setState(() {
-                                  final text = _onSuggestQuery(controller.text, suggest.label);
-
-                                controller.text = text;
-                                });
-
-                                // _floatingSearchBarController.query =
-                                //     _onSuggestQuery(
-                                //         _floatingSearchBarController.query,
-                                //         suggest.label);
-                              },
-                              child: const Icon(
-                                Icons.add,
-                                size: 32,
-                              )),
-                        ]),
-                      ),
-                    )
-                    .toList();
-              }))
-    ]);
+    return const SearchView();
 
     // FloatingSearchBar(
     //     controller: _floatingSearchBarController,

@@ -14,17 +14,12 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-
-import 'dart:math';
-
 import 'package:comic_nyaa/data/subscribe/subscribe_manager.dart';
 import 'package:comic_nyaa/data/subscribe/subscribe_provider.dart';
 import 'package:comic_nyaa/library/mio/core/site_manager.dart';
+import 'package:comic_nyaa/utils/message.dart';
 import 'package:comic_nyaa/utils/uri_extensions.dart';
 import 'package:flutter/material.dart';
-import 'package:fluttertoast/fluttertoast.dart';
-
-import '../data/subscribe/subscribe_provider.dart';
 
 class SubscribeView extends StatefulWidget {
   const SubscribeView({Key? key}) : super(key: key);
@@ -112,10 +107,10 @@ class _SubscribeViewState extends State<SubscribeView> {
         });
     try {
       await (await SubscribeManager.instance).updateSubscribe(subscribe);
-      Fluttertoast.showToast(msg: '规则已更新');
+      Message.show(msg: '规则已更新');
     } catch (e) {
       print(e);
-      Fluttertoast.showToast(msg: '更新失败');
+      Message.show(msg: '更新失败');
     } finally {
       ns?.pop();
     }
@@ -173,7 +168,7 @@ class _SubscribeViewState extends State<SubscribeView> {
                     ns?.pop();
                     setState(() => _update());
                   } else {
-                    Fluttertoast.showToast(msg: "订阅信息不能为空");
+                    Message.show(msg: "订阅信息不能为空");
                   }
                 },
                 child: Text(

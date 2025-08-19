@@ -15,7 +15,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # In iOS, build-name is used as CFBundleShortVersionString while build-number used as CFBundleVersion.
 # Read more about iOS versioning at
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
-version: 1.0.3+alpha
+version: 1.0.3+3
 
 environment:
 #  sdk: ">=3.7.2 <4.0.0"
@@ -30,6 +30,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_riverpod: ^3.0.0-dev.15
+  riverpod_annotation: ^3.0.0-dev.15
   intl: ^0.17.0
   # http: ^0.13.5
   # path_provider: ^2.0.11
@@ -58,18 +60,24 @@ dependencies:
   sliding_up_panel: ^2.0.0+1
   url_launcher: ^6.1.5
   flutter_cache_manager: ^3.3.0
-  get: ^4.6.5
   tuple: ^2.0.0
   # Rebuild Launch Splash: flutter pub run flutter_native_splash:create
   # flutter_native_splash: ^2.2.7
   flutter_native_splash: ^2.4.6
-
+  sqflite_common_ffi: ^2.3.5
+  logger: ^2.0.0
+  hooks_riverpod: ^3.0.0-dev.17
+  path: ^1.9.1
+  http_proxy: ^1.2.3
+#  sqflite_common_ffi_web: 1.0.0
   
 dev_dependencies:
   # Rebuild Icon: OLD: flutter pub run flutter_launcher_icons:main
   #               NEW: dart run flutter_launcher_icons:generate
   # flutter_launcher_icons: ^0.10.0
-  flutter_launcher_icons: "^0.14.3"
+  flutter_launcher_icons: ^0.14.3
+  riverpod_generator: ^3.0.0-dev.15
+  riverpod_lint: ^3.0.0-dev.17
   flutter_test:
     sdk: flutter
 
@@ -79,6 +87,7 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^2.0.0
+  custom_lint: ^0.8.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

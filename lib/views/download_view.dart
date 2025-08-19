@@ -17,8 +17,8 @@
 
 import 'dart:async';
 
+import 'package:comic_nyaa/utils/message.dart';
 import 'package:flutter/material.dart';
-import 'package:fluttertoast/fluttertoast.dart';
 
 import 'package:comic_nyaa/data/download/nyaa_download_manager.dart';
 import 'package:comic_nyaa/data/download/nyaa_download_task_queue.dart';
@@ -109,7 +109,7 @@ class _DownloadViewState extends State<DownloadView> {
   void _onDeleteItem(NyaaDownloadTaskQueue item) async {
     (await NyaaDownloadManager.instance).delete(item);
     _update();
-    Fluttertoast.showToast(msg: '${item.title} 已删除！');
+    Message.show(msg: '${item.title} 已删除！');
   }
 
   @override

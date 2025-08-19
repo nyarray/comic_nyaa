@@ -17,8 +17,7 @@
 
 import 'package:comic_nyaa/utils/public_api.dart';
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
-import 'package:get/get_state_manager/src/simple/get_controllers.dart';
+// import 'package:get/get.dart';
 
 import '../../utils/flutter_utils.dart';
 import '../../widget/simple_network_image.dart';
@@ -26,9 +25,9 @@ import '../download_view.dart';
 import '../settings_view.dart';
 import '../subscribe_view.dart';
 
-class _NyaaDrawerController extends GetxController {
-  final banner = ''.obs;
-  final hitokoto = Rxn<Hitokoto>();
+class _NyaaDrawerController  /*extends GetxController */{
+  final banner = '';
+  final Hitokoto hitokoto = Hitokoto();
 }
 
 class NyaaDrawer extends StatelessWidget {
@@ -36,13 +35,13 @@ class NyaaDrawer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final controller = Get.put(_NyaaDrawerController());
-    if (controller.banner.value.isEmpty) {
-      apiRandomImage().then((value) => controller.banner.value = value);
-    }
-    if (controller.hitokoto.value == null) {
-      apiHitokoto().then((value) => controller.hitokoto.value = value);
-    }
+    final controller = _NyaaDrawerController();
+    // if (controller.banner.value.isEmpty) {
+    //   apiRandomImage().then((value) => controller.banner.value = value);
+    // }
+    // if (controller.hitokoto.value == null) {
+    //   apiHitokoto().then((value) => controller.hitokoto.value = value);
+    // }
     return Drawer(
         child: ListView(padding: EdgeInsets.zero, children: [
       Container(
@@ -68,13 +67,13 @@ class NyaaDrawer extends StatelessWidget {
                               ])),
                       padding: const EdgeInsets.all(8),
                       alignment: Alignment.bottomLeft,
-                      child: Obx(() => Text(
-                          controller.hitokoto.value?.hitokoto ?? '',
+                      child: Text(
+                          controller.hitokoto.hitokoto ?? '',
                           style: TextStyle(
                               color: Colors.teal[100],
                               fontSize: 16
-                          )))),
-                ),
+                          )),
+                ),)
               ]))),
       ListTile(
           title: const Text('主页'),
@@ -104,14 +103,14 @@ class NyaaDrawer extends StatelessWidget {
   Widget _buildHeader(_NyaaDrawerController controller) {
     return Material(
             elevation: 4,
-            child: Obx(() => controller.banner.value.isNotEmpty
+            child: controller.banner.isNotEmpty
                 ? SimpleNetworkImage(
-                    controller.banner.value,
+                    controller.banner,
                     fit: BoxFit.cover,
                     width: double.maxFinite,
                     height: 160 + kToolbarHeight,
                     animationDuration: Duration.zero,
                   )
-                : Container(height: 160 + kToolbarHeight)));
+                : Container(height: 160 + kToolbarHeight));
   }
 }

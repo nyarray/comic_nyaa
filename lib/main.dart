@@ -16,6 +16,7 @@
  */
 
 import 'dart:async';
+import 'dart:io' show HttpOverrides, Platform;
 import 'package:comic_nyaa/app/app_preference.dart';
 import 'package:comic_nyaa/data/download/nyaa_download_manager.dart';
 import 'package:comic_nyaa/data/http_cache_provider.dart';
@@ -24,6 +25,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_displaymode/flutter_displaymode.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
+import 'package:http_proxy/http_proxy.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'app/app_config.dart';
 import 'library/http/http.dart';
 import 'library/http/sni.dart' as sni;
@@ -36,6 +39,8 @@ void main() async {
     final license = await rootBundle.loadString('google_fonts/OFL.txt');
     yield LicenseEntryWithLineBreaks(['google_fonts'], license);
   });
+  // 初始化数据库
+  initializeDatabase();
   // 隐藏状态栏
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.leanBack);
   // 透明状态栏
@@ -48,6 +53,21 @@ void main() async {
   FlutterNativeSplash.remove();
 }
 
+void initializeDatabase() {
+  // Web 环境
+  if (kIsWeb) {
+    // 本地环境
+  } else {
+    // 桌面端
+    if (Platform.isWindows || Platform.isLinux) {
+      databaseFactory = databaseFactoryFfi;
+      // 移动端
+    } else {}
+    // Initialize FFI
+    sqfliteFfiInit();
+  }
+}
+
 class ComicNyaa extends StatefulWidget {
   const ComicNyaa({Key? key}) : super(key: key);
 
@@ -57,7 +77,8 @@ class ComicNyaa extends StatefulWidget {
 
 class _ComicNyaaState extends State<ComicNyaa> {
   void location(Locale? deviceLocale, Iterable<Locale> supportedLocales) async {
-    (await AppPreferences.instance).setLocale(deviceLocale?.languageCode ?? 'zh-TW');
+    (await AppPreferences.instance)
+        .setLocale(deviceLocale?.languageCode ?? 'zh-TW');
   }
 
   @override
@@ -69,9 +90,9 @@ class _ComicNyaaState extends State<ComicNyaa> {
         primarySwatch: Colors.teal,
       ),
       localeResolutionCallback: (deviceLocale, supportedLocales) {
-      location(deviceLocale, supportedLocales);
-      return supportedLocales.first;
-    },
+        location(deviceLocale, supportedLocales);
+        return supportedLocales.first;
+      },
       home: const MainView(enableBackControl: true),
     );
   }
@@ -82,12 +103,18 @@ class _ComicNyaaState extends State<ComicNyaa> {
     super.initState();
   }
 
-
   void _initialized() {
-    // 初始化显示模式
-    setOptimalDisplayMode();
+
+    if (!kIsWeb) {
+      // 初始化显示模式
+      setOptimalDisplayMode();
+    }
+
     // 初始化Mio
     Mio.setCustomRequest((url, {Map<String, String>? headers}) async {
+          WidgetsFlutterBinding.ensureInitialized();
+    HttpProxy httpProxy = await HttpProxy.createHttpProxy();
+    HttpOverrides.global = httpProxy;
       // 发送请求 Http Client
       headers ??= <String, String>{};
       // 域前置解析
@@ -115,20 +142,22 @@ class _ComicNyaaState extends State<ComicNyaa> {
   }
 
   Future<void> setOptimalDisplayMode() async {
-    final List<DisplayMode> supported = await FlutterDisplayMode.supported;
-    final DisplayMode active = await FlutterDisplayMode.active;
-    final List<DisplayMode> sameResolution = supported
-        .where((DisplayMode m) =>
-    m.width == active.width && m.height == active.height)
-        .toList()
-      ..sort((DisplayMode a, DisplayMode b) =>
-          b.refreshRate.compareTo(a.refreshRate));
+    try {
+      final List<DisplayMode> supported = await FlutterDisplayMode.supported;
+      final DisplayMode active = await FlutterDisplayMode.active;
+      final List<DisplayMode> sameResolution = supported
+          .where((DisplayMode m) =>
+              m.width == active.width && m.height == active.height)
+          .toList()
+        ..sort((DisplayMode a, DisplayMode b) =>
+            b.refreshRate.compareTo(a.refreshRate));
 
-    final DisplayMode mostOptimalMode =
-    sameResolution.isNotEmpty ? sameResolution.first : active;
+      final DisplayMode mostOptimalMode =
+          sameResolution.isNotEmpty ? sameResolution.first : active;
 
-    /// This setting is per session.
-    /// Please ensure this was placed with `initState` of your root widget.
-    await FlutterDisplayMode.setPreferredMode(mostOptimalMode);
+      /// This setting is per session.
+      /// Please ensure this was placed with `initState` of your root widget.
+      await FlutterDisplayMode.setPreferredMode(mostOptimalMode);
+    } catch (e) {}
   }
 }

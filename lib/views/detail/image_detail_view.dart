@@ -15,10 +15,13 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+import 'dart:ui';
+
 import 'package:comic_nyaa/app/app_config.dart';
 import 'package:comic_nyaa/library/mio/core/mio.dart';
 import 'package:comic_nyaa/library/mio/model/data_origin.dart';
 import 'package:comic_nyaa/models/typed_model.dart';
+import 'package:comic_nyaa/utils/message.dart';
 import 'package:comic_nyaa/utils/extensions.dart';
 import 'package:comic_nyaa/utils/num_extensions.dart';
 import 'package:comic_nyaa/utils/string_extensions.dart';
@@ -30,7 +33,6 @@ import 'package:comic_nyaa/widget/simple_network_image.dart';
 import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:fluttertoast/fluttertoast.dart';
 import 'package:sliding_up_panel/sliding_up_panel.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 import '../../app/app_preference.dart';
@@ -84,7 +86,7 @@ class _ImageDetailViewState extends State<ImageDetailView>
         }
       });
     } catch (e) {
-      Fluttertoast.showToast(msg: e.toString());
+      Message.show(msg: e.toString());
       rethrow;
     }
   }
@@ -102,14 +104,14 @@ class _ImageDetailViewState extends State<ImageDetailView>
       if (m.children?.isNotEmpty == true) {
         final models = m.children;
         if (models == null) {
-          Fluttertoast.showToast(msg: '解析异常：没有可用数据');
+          Message.show(msg: '解析异常：没有可用数据');
           return;
         }
         if (models.length == 1) {
           model = models[0];
           image = models[0].availablePreviewUrl;
         } else {
-          Fluttertoast.showToast(msg: '解析异常：预料之外的子数据集');
+          Message.show(msg: '解析异常：预料之外的子数据集');
           return;
         }
       } else {
@@ -156,12 +158,12 @@ class _ImageDetailViewState extends State<ImageDetailView>
           break;
       }
       if (url == null || url.trim().isEmpty) {
-        Fluttertoast.showToast(msg: '下载失败，无有效下载源');
+        Message.show(msg: '下载失败，无有效下载源');
         return;
       }
       String savePath =
           (await AppConfig.downloadDir).join(Uri.parse(url).filename);
-      Fluttertoast.showToast(msg: '下载已添加：$savePath');
+      Message.show(msg: '下载已添加：$savePath');
       await Http.downloadFile(url, savePath, headers: _origin.site.headers);
 
       print('Download =====> $savePath');
@@ -227,127 +229,139 @@ class _ImageDetailViewState extends State<ImageDetailView>
               controller: _panelController,
               body: Material(
                   color: Colors.black,
-                  child: ExtendedImageGesturePageView.builder(
-                    itemCount: _images.length,
-                    scrollDirection: Axis.horizontal,
-                    controller: ExtendedPageController(
-                      initialPage: _currentIndex,
-                    ),
-                    onPageChanged: (int index) {
-                      _currentIndex = index;
-                      // 预加载
-                      _preload(index);
-                      setState(() {});
-                    },
-                    itemBuilder: (BuildContext context, int index) {
-                      final url = _images[index];
-                      final placeholder =
-                          widget.models[index].availableCoverUrl;
-                      final heroTag = '${widget.heroKey}-$placeholder-$index';
-                      if (url.isEmpty) {
-                        return Hero(
-                            tag: heroTag, child: _buildLoading(placeholder));
-                      }
-                      void Function() animationListener = () {};
-                      Widget image = ExtendedImage.network(
-                        url,
-                        height: viewportHeight,
-                        fit: BoxFit.contain,
-                        mode: ExtendedImageMode.gesture,
-                        handleLoadingProgress: true,
-                        headers: _origin.site.headers,
-                        onDoubleTap: (state) {
-                          // reset animation
-                          _animation?.removeListener(animationListener);
-                          _animationController?.stop();
-                          _animationController?.reset();
-                          // animation start
-                          final image = state.widget.extendedImageState
-                              .extendedImageInfo?.image;
-                          final layout = state.gestureDetails?.layoutRect;
-                          final doubleTapScales = <double>[1.0];
-                          // 计算全屏缩放比例
-                          if (image != null && layout != null) {
-                            // print('IMAGE_W: ${image.width}, IMAGE_H: ${image.height}');
-                            // print('CONTAINER_SIZE: ${layout.width} x ${layout.height}');
-                            // print('SCREEN_SIZE: ${screen.width} x ${screen.height}');
-                            final widthScale = image.width / layout.width;
-                            final heightScale = image.height / layout.height;
-                            if (widthScale > heightScale) {
-                              doubleTapScales.add(widthScale / heightScale);
-                              doubleTapScales.add(widthScale);
+                  child: Stack(children: [
+                    ExtendedImageGesturePageView.builder(
+                      itemCount: _images.length,
+                      scrollDirection: Axis.horizontal,
+                      controller: ExtendedPageController(
+                        initialPage: _currentIndex,
+                      ),
+                      onPageChanged: (int index) {
+                        _currentIndex = index;
+                        // 预加载
+                        _preload(index);
+                        setState(() {});
+                      },
+                      itemBuilder: (BuildContext context, int index) {
+                        final url = _images[index];
+                        final placeholder =
+                            widget.models[index].availableCoverUrl;
+                        final heroTag = '${widget.heroKey}-$placeholder-$index';
+                        if (url.isEmpty) {
+                          return Hero(
+                              tag: heroTag, child: _buildLoading(placeholder));
+                        }
+                        void Function() animationListener = () {};
+                        Widget image = ExtendedImage.network(
+                          url,
+                          height: viewportHeight,
+                          fit: BoxFit.contain,
+                          mode: ExtendedImageMode.gesture,
+                          handleLoadingProgress: true,
+                          headers: _origin.site.headers,
+                          onDoubleTap: (state) {
+                            // reset animation
+                            _animation?.removeListener(animationListener);
+                            _animationController?.stop();
+                            _animationController?.reset();
+                            // animation start
+                            final image = state.widget.extendedImageState
+                                .extendedImageInfo?.image;
+                            final layout = state.gestureDetails?.layoutRect;
+                            final doubleTapScales = <double>[1.0];
+                            // 计算全屏缩放比例
+                            if (image != null && layout != null) {
+                              // print('IMAGE_W: ${image.width}, IMAGE_H: ${image.height}');
+                              // print('CONTAINER_SIZE: ${layout.width} x ${layout.height}');
+                              // print('SCREEN_SIZE: ${screen.width} x ${screen.height}');
+                              final widthScale = image.width / layout.width;
+                              final heightScale = image.height / layout.height;
+                              if (widthScale > heightScale) {
+                                doubleTapScales.add(widthScale / heightScale);
+                                doubleTapScales.add(widthScale);
+                              } else {
+                                doubleTapScales.add(heightScale / widthScale);
+                                doubleTapScales.add(heightScale);
+                              }
                             } else {
-                              doubleTapScales.add(heightScale / widthScale);
-                              doubleTapScales.add(heightScale);
+                              doubleTapScales.add(2.0);
                             }
-                          } else {
-                            doubleTapScales.add(2.0);
-                          }
-                          // 默认尺寸
-                          Offset? pointerDownPosition =
-                              state.pointerDownPosition;
-                          double begin =
-                              state.gestureDetails?.totalScale ?? 1.0;
-                          double end;
+                            // 默认尺寸
+                            Offset? pointerDownPosition =
+                                state.pointerDownPosition;
+                            double begin =
+                                state.gestureDetails?.totalScale ?? 1.0;
+                            double end;
 
-                          int currentScaleIndex = doubleTapScales.indexWhere(
-                              (item) => (begin - item).abs() < 0.01);
-                          end = doubleTapScales[
-                              currentScaleIndex + 1 < doubleTapScales.length
-                                  ? currentScaleIndex + 1
-                                  : 0];
-                          // print('SCALES::: $doubleTapScales');
-                          // print('begin: $begin, end: $end;');
-                          animationListener = () {
-                            state.handleDoubleTap(
-                                scale: _animation?.value,
-                                doubleTapPosition: pointerDownPosition);
-                          };
-                          _animation = Tween<double>(begin: begin, end: end)
-                              .animate(CurvedAnimation(
-                                  parent: _animationController!,
-                                  curve: Curves.ease));
-                          _animation?.addListener(animationListener);
-                          _animationController?.forward();
-                        },
-                        loadStateChanged: (state) {
-                          switch (state.extendedImageLoadState) {
-                            case LoadState.loading:
-                              final event = state.loadingProgress;
-                              return _buildLoading(placeholder,
-                                  current: event?.cumulativeBytesLoaded,
-                                  total: event?.expectedTotalBytes);
-                            case LoadState.failed:
-                              return const Center(
-                                  child: Icon(Icons.image_not_supported,
-                                      size: 64));
-                            case LoadState.completed:
-                              return null;
-                          }
-                        },
-                        initGestureConfigHandler: (ExtendedImageState state) =>
-                            GestureConfig(
-                          minScale: 0.1,
-                          maxScale: double.infinity,
-                          inPageView: true,
-                          initialScale: 1.0,
-                          cacheGesture: false,
-                        ),
-                      );
-                      image = InkWell(
-                        onLongPress: () => _onDownload(_models[_currentIndex]),
-                        child: image,
-                      );
-                      if (index == _currentIndex) {
-                        return Hero(
-                          tag: heroTag,
+                            int currentScaleIndex = doubleTapScales.indexWhere(
+                                (item) => (begin - item).abs() < 0.01);
+                            end = doubleTapScales[
+                                currentScaleIndex + 1 < doubleTapScales.length
+                                    ? currentScaleIndex + 1
+                                    : 0];
+                            // print('SCALES::: $doubleTapScales');
+                            // print('begin: $begin, end: $end;');
+                            animationListener = () {
+                              state.handleDoubleTap(
+                                  scale: _animation?.value,
+                                  doubleTapPosition: pointerDownPosition);
+                            };
+                            _animation = Tween<double>(begin: begin, end: end)
+                                .animate(CurvedAnimation(
+                                    parent: _animationController!,
+                                    curve: Curves.ease));
+                            _animation?.addListener(animationListener);
+                            _animationController?.forward();
+                          },
+                          loadStateChanged: (state) {
+                            switch (state.extendedImageLoadState) {
+                              case LoadState.loading:
+                                final event = state.loadingProgress;
+                                return _buildLoading(placeholder,
+                                    current: event?.cumulativeBytesLoaded,
+                                    total: event?.expectedTotalBytes);
+                              case LoadState.failed:
+                                return const Center(
+                                    child: Icon(Icons.image_not_supported,
+                                        size: 64));
+                              case LoadState.completed:
+                                return null;
+                            }
+                          },
+                          initGestureConfigHandler:
+                              (ExtendedImageState state) => GestureConfig(
+                            minScale: 0.1,
+                            maxScale: double.infinity,
+                            inPageView: true,
+                            initialScale: 1.0,
+                            cacheGesture: false,
+                          ),
+                        );
+                        image = InkWell(
+                          onLongPress: () =>
+                              _onDownload(_models[_currentIndex]),
                           child: image,
                         );
-                      } else {
-                        return image;
-                      }
-                    },
-                  )),
+                        if (index == _currentIndex) {
+                          return Hero(
+                            tag: heroTag,
+                            child: image,
+                          );
+                        } else {
+                          return image;
+                        }
+                      },
+                    ),
+                    InkWell(
+                      child: Icon(
+                        Icons.backspace,
+                        color: Colors.white,
+                      ),
+                      onTap: () {
+                        Navigator.pop(context);
+                      },
+                    )
+                  ])),
               minHeight: 64,
               maxHeight: screenHeight * 0.667,
               isDraggable: true,
@@ -386,57 +400,69 @@ class _ImageDetailViewState extends State<ImageDetailView>
         margin: const EdgeInsets.only(top: 64),
         child: Material(
             borderRadius: BorderRadius.circular(16),
-            child: ListView(
-                controller: scrollController,
-                padding: const EdgeInsets.only(
-                    top: 8, left: 16, bottom: 24, right: 16),
-                children: [
-                  // _buildTitleView('Title'),
-                  _buildTitleView('标题'),
-                  Text(title ?? ''),
-                  // _buildTitleView('Tags'),
-                  _buildTitleView('标签'),
-                  NyaaTags(
-                      itemCount: tags.length,
-                      builder: (ctx, index) => NyaaTagItem(
-                            text: tags[index],
-                            color: Colors.teal,
-                            onTap: () {
-                              RouteUtil.push(
-                                  context,
-                                  MainView(
-                                      site: widget.models[0].getOrigin().site,
-                                      keywords: tags[index]));
-                            },
-                          )),
-                  _models[_currentIndex].sampleUrl != null
-                      ? Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                              // _buildTitleView('Preview source url'),
-                              _buildTitleView('预览源'),
-                              _buildLink(_models[_currentIndex].sampleUrl ?? '')
-                            ])
-                      : Container(),
-                  _models[_currentIndex].largerUrl != null
-                      ? Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                              // _buildTitleView('Compressed source url'),
-                              _buildTitleView('压缩源'),
-                              _buildLink(_models[_currentIndex].largerUrl ?? '')
-                            ])
-                      : Container(),
-                  _models[_currentIndex].originUrl != null
-                      ? Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                              // _buildTitleView('Original source url'),
-                              _buildTitleView('原始源'),
-                              _buildLink(_models[_currentIndex].originUrl ?? '')
-                            ])
-                      : Container(),
-                ])));
+            child: ScrollConfiguration(
+                behavior: const ScrollBehavior().copyWith(
+                  scrollbars: true, // 显示滚动条
+                  dragDevices: {
+                    PointerDeviceKind.mouse,
+                    PointerDeviceKind.touch
+                  },
+                ),
+                child: ListView(
+                    controller: scrollController,
+                    padding: const EdgeInsets.only(
+                        top: 8, left: 16, bottom: 24, right: 16),
+                    children: [
+                      // _buildTitleView('Title'),
+                      _buildTitleView('标题'),
+                      Text(title ?? ''),
+                      // _buildTitleView('Tags'),
+                      _buildTitleView('标签'),
+                      NyaaTags(
+                          itemCount: tags.length,
+                          builder: (ctx, index) => NyaaTagItem(
+                                text: tags[index],
+                                color: Colors.teal,
+                                onTap: () {
+                                  RouteUtil.push(
+                                      context,
+                                      MainView(
+                                          site:
+                                              widget.models[0].getOrigin().site,
+                                          keywords: tags[index]));
+                                },
+                              )),
+                      _models[_currentIndex].sampleUrl != null
+                          ? Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                  // _buildTitleView('Preview source url'),
+                                  _buildTitleView('预览源'),
+                                  _buildLink(
+                                      _models[_currentIndex].sampleUrl ?? '')
+                                ])
+                          : Container(),
+                      _models[_currentIndex].largerUrl != null
+                          ? Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                  // _buildTitleView('Compressed source url'),
+                                  _buildTitleView('压缩源'),
+                                  _buildLink(
+                                      _models[_currentIndex].largerUrl ?? '')
+                                ])
+                          : Container(),
+                      _models[_currentIndex].originUrl != null
+                          ? Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                  // _buildTitleView('Original source url'),
+                                  _buildTitleView('原始源'),
+                                  _buildLink(
+                                      _models[_currentIndex].originUrl ?? '')
+                                ])
+                          : Container(),
+                    ]))));
   }
 
   Widget _buildTitleView(String title) {
@@ -453,7 +479,7 @@ class _ImageDetailViewState extends State<ImageDetailView>
     return InkWell(
         onTap: () {
           Clipboard.setData(ClipboardData(text: url));
-          Fluttertoast.showToast(msg: '已复制到剪切板');
+          Message.show(msg: '已复制到剪切板');
         },
         onLongPress: () async {
           if (await canLaunchUrlString(url)) {

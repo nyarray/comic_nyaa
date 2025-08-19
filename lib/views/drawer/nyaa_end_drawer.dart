@@ -17,16 +17,14 @@
 
 import 'package:comic_nyaa/utils/public_api.dart';
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
-
 import '../../app/app_config.dart';
 import '../../library/mio/model/site.dart';
 import '../../widget/simple_network_image.dart';
 
-class _NyaaEndController extends GetxController {
-  var expandState = <int, bool>{0: true}.obs;
-  var scrollPosition = 0.0.obs;
-  var banner = ''.obs;
+class _NyaaEndController {
+  var expandState = <int, bool>{0: true};
+  var scrollPosition = 0.0;
+  var banner = '';
 }
 
 class NyaaEndDrawer extends StatelessWidget {
@@ -52,9 +50,9 @@ class NyaaEndDrawer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final controller = Get.put(_NyaaEndController());
-    if (controller.banner.value.isEmpty) {
-      apiRandomImage().then((value) => controller.banner.value = value);
+    final controller = _NyaaEndController();
+    if (controller.banner.isEmpty) {
+      apiRandomImage().then((value) => controller.banner = value);
     }
     final siteTypeMap = <String, List<Site>>{};
     for (final site in sites) {
@@ -128,9 +126,9 @@ class NyaaEndDrawer extends StatelessWidget {
             }));
     WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
       if (_scrollController.positions.isNotEmpty) {
-        _scrollController.jumpTo(controller.scrollPosition.value);
+        _scrollController.jumpTo(controller.scrollPosition);
         _scrollController.addListener(() {
-          controller.scrollPosition.value = _scrollController.position.pixels;
+          controller.scrollPosition = _scrollController.position.pixels;
         });
       }
     });
@@ -142,10 +140,10 @@ class NyaaEndDrawer extends StatelessWidget {
         padding: const EdgeInsets.only(bottom: 8),
         child: Material(
             elevation: 4,
-            child: Obx(() => controller.banner.value.isNotEmpty
-                    ? SimpleNetworkImage(controller.banner.value,
+            child:  controller.banner.isNotEmpty
+                    ? SimpleNetworkImage(controller.banner,
                         animationDuration: Duration.zero,
                         fit: BoxFit.cover, height: 160 + kToolbarHeight)
-                    : Container(height: 160 + kToolbarHeight))));
+                    : Container(height: 160 + kToolbarHeight)));
   }
 }

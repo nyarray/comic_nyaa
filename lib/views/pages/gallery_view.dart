@@ -17,10 +17,10 @@
 
 import 'dart:async';
 
+import 'package:comic_nyaa/utils/message.dart';
 import 'package:comic_nyaa/utils/extensions.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
-import 'package:fluttertoast/fluttertoast.dart';
 import 'package:extended_image/extended_image.dart';
 import 'package:pull_to_refresh/pull_to_refresh.dart';
 import 'package:shimmer/shimmer.dart';
@@ -137,7 +137,7 @@ class _GalleryViewState extends State<GalleryView>
       final images = await _getModels();
       if (images.isEmpty) {
         if (isNext) _page--;
-        Fluttertoast.showToast(msg: '已经到底了');
+        Message.show(msg: '已经到底了');
       } else {
         // print('SEND PRELOAD =====> PAGE = $_page');
         _preload();
@@ -145,7 +145,7 @@ class _GalleryViewState extends State<GalleryView>
       return images;
     } catch (e) {
       if (isNext) _page--;
-      Fluttertoast.showToast(msg: 'ERROR: $e');
+      Message.show(msg: 'ERROR: $e');
     } finally {
       _isLoading = false;
     }
@@ -268,7 +268,7 @@ class _GalleryViewState extends State<GalleryView>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    _topOffset = kToolbarHeight + MediaQuery.of(context).viewPadding.top;
+    // _topOffset = kToolbarHeight + MediaQuery.of(context).viewPadding.top;
     return Column(children: [
       Flexible(
         child: RawScrollbar(
@@ -282,7 +282,7 @@ class _GalleryViewState extends State<GalleryView>
                 enablePullUp: true,
                 header: WaterDropMaterialHeader(
                   distance: 48,
-                  offset: _topOffset,
+                  // offset: _topOffset,
                   backgroundColor:
                       widget.color ?? Theme.of(context).primaryColor,
                 ),
@@ -294,7 +294,8 @@ class _GalleryViewState extends State<GalleryView>
                 // onLoading: _onLoading,
                 child: _items.isNotEmpty || _refreshController.isLoading || _refreshController.isRefresh
                     ? MasonryGridView.count(
-                        padding: EdgeInsets.fromLTRB(8, _topOffset + 8, 8, 0),
+                        // padding: EdgeInsets.fromLTRB(8, _topOffset + 8, 8, 0),
+                        padding: const EdgeInsets.all(8.0),
                         crossAxisCount: 3,
                         mainAxisSpacing: 8.0,
                         crossAxisSpacing: 8.0,

@@ -19,8 +19,8 @@ import 'package:comic_nyaa/app/app_config.dart';
 import 'package:comic_nyaa/library/mio/core/mio.dart';
 import 'package:comic_nyaa/library/mio/model/data_origin.dart';
 import 'package:comic_nyaa/models/typed_model.dart';
+import 'package:comic_nyaa/utils/message.dart';
 import 'package:comic_nyaa/utils/extensions.dart';
-import 'package:comic_nyaa/utils/num_extensions.dart';
 import 'package:comic_nyaa/utils/string_extensions.dart';
 import 'package:comic_nyaa/utils/uri_extensions.dart';
 import 'package:comic_nyaa/views/main_view.dart';
@@ -29,8 +29,6 @@ import 'package:comic_nyaa/widget/nyaa_tags.dart';
 import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
-import 'package:fluttertoast/fluttertoast.dart';
-import 'package:percent_indicator/circular_percent_indicator.dart';
 import 'package:sliding_up_panel/sliding_up_panel.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 import '../app/app_preference.dart';
@@ -62,7 +60,7 @@ class _SimpleImageDetailViewState extends State<SimpleImageDetailView>
   int _currentIndex = 0;
   AnimationController? _animationController;
   Animation<double>? _animation;
-
+  
   void _initialized() async {
     _animationController = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 250));
@@ -82,7 +80,7 @@ class _SimpleImageDetailViewState extends State<SimpleImageDetailView>
         }
       });
     } catch (e) {
-      Fluttertoast.showToast(msg: e.toString());
+      Message.show(msg: e.toString());
       rethrow;
     }
   }
@@ -100,14 +98,14 @@ class _SimpleImageDetailViewState extends State<SimpleImageDetailView>
       if (m.children?.isNotEmpty == true) {
         final models = m.children;
         if (models == null) {
-          Fluttertoast.showToast(msg: '解析异常：没有可用数据');
+          Message.show(msg: '解析异常：没有可用数据');
           return;
         }
         if (models.length == 1) {
           model = models[0];
           image = models[0].availablePreviewUrl;
         } else {
-          Fluttertoast.showToast(msg: '解析异常：预料之外的子数据集');
+          Message.show(msg: '解析异常：预料之外的子数据集');
           return;
         }
       } else {
@@ -152,12 +150,12 @@ class _SimpleImageDetailViewState extends State<SimpleImageDetailView>
           break;
       }
       if (url == null || url.trim().isEmpty) {
-        Fluttertoast.showToast(msg: '下载失败，无有效下载源');
+        Message.show(msg: '下载失败，无有效下载源');
         return;
       }
       String savePath =
           (await AppConfig.downloadDir).join(Uri.parse(url).filename);
-      Fluttertoast.showToast(msg: '下载已添加：$savePath');
+      Message.show(msg: '下载已添加：$savePath');
       await Http.downloadFile(url, savePath, headers: _origin.site.headers);
 
       print('Download =====> $savePath');
@@ -186,150 +184,156 @@ class _SimpleImageDetailViewState extends State<SimpleImageDetailView>
     final padding = MediaQuery.of(context).padding;
     double viewportHeight = screenHeight - padding.top - padding.bottom;
     return Scaffold(
-        body: SlidingUpPanel(
+
+        body: Stack(fit: StackFit.expand,
+            children: [ SlidingUpPanel(
             controller: _panelController,
             body: Material(
                 color: Colors.black,
-                child: ExtendedImageGesturePageView.builder(
-                  itemCount: _images.length,
-                  scrollDirection: Axis.horizontal,
-                  controller: ExtendedPageController(
-                    initialPage: _currentIndex,
-                  ),
-                  onPageChanged: (int index) {
-                    _currentIndex = index;
-                    // 预加载
-                    _preload(index);
-                    setState(() {});
-                  },
-                  itemBuilder: (BuildContext context, int index) {
-                    var item = _images[index];
-                    if (item.isEmpty) {
-                      return _buildLoading();
-                    }
-                    void Function() animationListener = () {};
-                    Widget image = ExtendedImage.network(
-                      height: viewportHeight,
-                      item,
-                      fit: BoxFit.contain,
-                      mode: ExtendedImageMode.gesture,
-                      handleLoadingProgress: true,
-                      headers: _origin.site.headers,
-                      onDoubleTap: (state) {
-                        // reset animation
-                        _animation?.removeListener(animationListener);
-                        _animationController?.stop();
-                        _animationController?.reset();
-                        // animation start
-                        final image = state
-                            .widget.extendedImageState.extendedImageInfo?.image;
-                        final layout = state.gestureDetails?.layoutRect;
-                        // final screen = MediaQuery.of(context).size;
-                        final doubleTapScales = <double>[1.0];
-                        // 计算全屏缩放比例
-                        if (image != null && layout != null) {
-                          // print('IMAGE_W: ${image.width}, IMAGE_H: ${image.height}');
-                          // print('CONTAINER_SIZE: ${layout.width} x ${layout.height}');
-                          // print('SCREEN_SIZE: ${screen.width} x ${screen.height}');
-                          final widthScale = image.width / layout.width;
-                          final heightScale = image.height / layout.height;
-                          if (widthScale > heightScale) {
-                            doubleTapScales.add(widthScale / heightScale);
-                            doubleTapScales.add(widthScale);
-                          } else {
-                            doubleTapScales.add(heightScale / widthScale);
-                            doubleTapScales.add(heightScale);
-                          }
-                        } else {
-                          doubleTapScales.add(2.0);
-                        }
-                        // 默认尺寸
-                        Offset? pointerDownPosition = state.pointerDownPosition;
-                        double begin = state.gestureDetails?.totalScale ?? 1.0;
-                        double end;
-
-                        int currentScaleIndex = doubleTapScales
-                            .indexWhere((item) => (begin - item).abs() < 0.01);
-                        end = doubleTapScales[
-                            currentScaleIndex + 1 < doubleTapScales.length
-                                ? currentScaleIndex + 1
-                                : 0];
-                        // print('SCALES::: $doubleTapScales');
-                        // print('begin: $begin, end: $end;');
-                        animationListener = () {
-                          state.handleDoubleTap(
-                              scale: _animation?.value,
-                              doubleTapPosition: pointerDownPosition);
-                        };
-                        _animation = Tween<double>(begin: begin, end: end)
-                            .animate(CurvedAnimation(
-                                parent: _animationController!,
-                                curve: Curves.ease));
-                        _animation?.addListener(animationListener);
-                        _animationController?.forward();
-                      },
-                      loadStateChanged: (state) {
-                        switch (state.extendedImageLoadState) {
-                          case LoadState.loading:
-                            final event = state.loadingProgress;
-                            double? progress;
-                            if (event == null) {
-                              progress = 0;
-                            } else {
-                              if (event.expectedTotalBytes != null &&
-                                  event.expectedTotalBytes! > 0) {
-                                progress = event.cumulativeBytesLoaded /
-                                    (event.expectedTotalBytes!);
-                              }
-                            }
-                            return CircularPercentIndicator(
-                                radius: 48,
-                                lineWidth: 8,
-                                progressColor: Colors.teal,
-                                animation: true,
-                                animateFromLastPercent: true,
-                                circularStrokeCap: CircularStrokeCap.round,
-                                percent: progress ?? 0,
-                                center: Text(
-                                  event != null
-                                      ? getProgressText(
-                                          event.cumulativeBytesLoaded,
-                                          event.expectedTotalBytes ?? 0)
-                                      : 'Loading',
-                                  style: const TextStyle(
-                                      fontSize: 18, color: Colors.white70),
-                                ));
-                          case LoadState.failed:
-                            return const Center(
-                                child:
-                                    Icon(Icons.image_not_supported, size: 64));
-                          case LoadState.completed:
-                            return null;
-                        }
-                      },
-                      initGestureConfigHandler: (ExtendedImageState state) =>
-                          GestureConfig(
-                        minScale: 0.1,
-                        maxScale: double.infinity,
-                        inPageView: true,
-                        initialScale: 1.0,
-                        cacheGesture: false,
-                      ),
-                    );
-                    image = InkWell(
-                      onLongPress: () => _onDownload(_models[_currentIndex]),
-                      child: image,
-                    );
-                    if (index == _currentIndex) {
-                      return Hero(
-                        tag: item + index.toString(),
-                        child: image,
-                      );
-                    } else {
-                      return image;
-                    }
-                  },
-                )),
+                child: Stack(children: [
+                //   ExtendedImageGesturePageView.builder(
+                //   itemCount: _images.length,
+                //   scrollDirection: Axis.horizontal,
+                //   controller: ExtendedPageController(
+                //     initialPage: _currentIndex,
+                //   ),
+                //   onPageChanged: (int index) {
+                //     _currentIndex = index;
+                //     // 预加载
+                //     _preload(index);
+                //     setState(() {});
+                //   },
+                //   itemBuilder: (BuildContext context, int index) {
+                //     var item = _images[index];
+                //     if (item.isEmpty) {
+                //       return _buildLoading();
+                //     }
+                //     void Function() animationListener = () {};
+                //     Widget image = ExtendedImage.network(
+                //       height: viewportHeight,
+                //       item,
+                //       fit: BoxFit.contain,
+                //       mode: ExtendedImageMode.gesture,
+                //       handleLoadingProgress: true,
+                //       headers: _origin.site.headers,
+                //
+                //       onDoubleTap: (state) {
+                //         // reset animation
+                //         _animation?.removeListener(animationListener);
+                //         _animationController?.stop();
+                //         _animationController?.reset();
+                //         // animation start
+                //         final image = state
+                //             .widget.extendedImageState.extendedImageInfo?.image;
+                //         final layout = state.gestureDetails?.layoutRect;
+                //         // final screen = MediaQuery.of(context).size;
+                //         final doubleTapScales = <double>[1.0];
+                //         // 计算全屏缩放比例
+                //         if (image != null && layout != null) {
+                //           // print('IMAGE_W: ${image.width}, IMAGE_H: ${image.height}');
+                //           // print('CONTAINER_SIZE: ${layout.width} x ${layout.height}');
+                //           // print('SCREEN_SIZE: ${screen.width} x ${screen.height}');
+                //           final widthScale = image.width / layout.width;
+                //           final heightScale = image.height / layout.height;
+                //           if (widthScale > heightScale) {
+                //             doubleTapScales.add(widthScale / heightScale);
+                //             doubleTapScales.add(widthScale);
+                //           } else {
+                //             doubleTapScales.add(heightScale / widthScale);
+                //             doubleTapScales.add(heightScale);
+                //           }
+                //         } else {
+                //           doubleTapScales.add(2.0);
+                //         }
+                //         // 默认尺寸
+                //         Offset? pointerDownPosition = state.pointerDownPosition;
+                //         double begin = state.gestureDetails?.totalScale ?? 1.0;
+                //         double end;
+                //
+                //         int currentScaleIndex = doubleTapScales
+                //             .indexWhere((item) => (begin - item).abs() < 0.01);
+                //         end = doubleTapScales[
+                //             currentScaleIndex + 1 < doubleTapScales.length
+                //                 ? currentScaleIndex + 1
+                //                 : 0];
+                //         // print('SCALES::: $doubleTapScales');
+                //         // print('begin: $begin, end: $end;');
+                //         animationListener = () {
+                //           state.handleDoubleTap(
+                //               scale: _animation?.value,
+                //               doubleTapPosition: pointerDownPosition);
+                //         };
+                //         _animation = Tween<double>(begin: begin, end: end)
+                //             .animate(CurvedAnimation(
+                //                 parent: _animationController!,
+                //                 curve: Curves.ease));
+                //         _animation?.addListener(animationListener);
+                //         _animationController?.forward();
+                //       },
+                //       loadStateChanged: (state) {
+                //         switch (state.extendedImageLoadState) {
+                //           case LoadState.loading:
+                //             final event = state.loadingProgress;
+                //             double? progress;
+                //             if (event == null) {
+                //               progress = 0;
+                //             } else {
+                //               if (event.expectedTotalBytes != null &&
+                //                   event.expectedTotalBytes! > 0) {
+                //                 progress = event.cumulativeBytesLoaded /
+                //                     (event.expectedTotalBytes!);
+                //               }
+                //             }
+                //             return CircularPercentIndicator(
+                //                 radius: 48,
+                //                 lineWidth: 8,
+                //                 progressColor: Colors.teal,
+                //                 animation: true,
+                //                 animateFromLastPercent: true,
+                //                 circularStrokeCap: CircularStrokeCap.round,
+                //                 percent: progress ?? 0,
+                //                 center: Text(
+                //                   event != null
+                //                       ? getProgressText(
+                //                           event.cumulativeBytesLoaded,
+                //                           event.expectedTotalBytes ?? 0)
+                //                       : 'Loading',
+                //                   style: const TextStyle(
+                //                       fontSize: 18, color: Colors.white70),
+                //                 ));
+                //           case LoadState.failed:
+                //             return const Center(
+                //                 child:
+                //                     Icon(Icons.image_not_supported, size: 64));
+                //           case LoadState.completed:
+                //             return null;
+                //         }
+                //       },
+                //       initGestureConfigHandler: (ExtendedImageState state) =>
+                //           GestureConfig(
+                //         minScale: 0.1,
+                //         maxScale: double.infinity,
+                //         inPageView: true,
+                //         initialScale: 1.0,
+                //         cacheGesture: false,
+                //       ),
+                //     );
+                //     image = InkWell(
+                //       onLongPress: () => _onDownload(_models[_currentIndex]),
+                //       child: image,
+                //     );
+                //     if (index == _currentIndex) {
+                //       return Hero(
+                //         tag: item + index.toString(),
+                //         child: image,
+                //       );
+                //     } else {
+                //       return image;
+                //     }
+                //   },
+                // ),
+                  SizedBox(width: 64, height: 64, child: Container(child: Icon(Icons.add_ic_call)),),
+                  const Icon(Icons.backspace)])),
             minHeight: 64,
             maxHeight: screenHeight * 0.667,
             isDraggable: true,
@@ -350,7 +354,9 @@ class _SimpleImageDetailViewState extends State<SimpleImageDetailView>
                       size: 32,
                     ))),
           panelBuilder: (scrollController) => _buildScrollPanel(scrollController),
-        ));
+        ),  Icon(Icons.backspace), ExtendedImage.network(
+        height: viewportHeight,
+        "https://i2.hdslb.com/bfs/archive/c6cbab80edf3458b8c838d472279c537ce6ced6c.jpg@672w_378h_1c_!web-home-common-cover.avif")]));
   }
 
   Widget _buildScrollPanel(ScrollController scrollController) {

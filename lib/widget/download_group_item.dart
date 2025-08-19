@@ -15,8 +15,8 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+import 'package:comic_nyaa/utils/message.dart';
 import 'package:flutter/material.dart';
-import 'package:fluttertoast/fluttertoast.dart';
 import 'package:intl/intl.dart';
 import 'package:comic_nyaa/widget/simple_network_image.dart';
 import 'package:comic_nyaa/widget/triangle_painter.dart';
@@ -215,7 +215,7 @@ class DownloadQueueItem extends StatelessWidget {
     final successfulCount = tasks.tasks
         .where((item) => item.status == DownloadStatus.successful)
         .length;
-    Fluttertoast.showToast(
+    Message.show(
         msg:
             '任务已完成: ${tasks.title}， 成功: $successfulCount 项，失败: ${tasks.tasks.length - successfulCount} 项');
     // (await NyaaDownloadManager.instance).restart(tasks.parent);

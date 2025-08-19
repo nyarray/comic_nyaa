@@ -16,8 +16,8 @@
  */
 
 import 'package:comic_nyaa/app/app_config.dart';
+import 'package:comic_nyaa/utils/message.dart';
 import 'package:flutter/material.dart';
-import 'package:fluttertoast/fluttertoast.dart';
 
 class SettingsView extends StatefulWidget {
   const SettingsView({Key? key}) : super(key: key);
@@ -58,13 +58,13 @@ class _SettingsViewState extends State<StatefulWidget> {
             subtitle: Text(_downloadPath),
             onTap: () {
               // DefaultCacheManager().emptyCache();
-              // Fluttertoast.showToast(msg: '清除成功');
+              // Message.show(msg: '清除成功');
             })
       ]),
     );
   }
 
   static void _clearCache() async {
-    Fluttertoast.showToast(msg: '缓存已清除');
+    Message.show(msg: '缓存已清除');
   }
 }

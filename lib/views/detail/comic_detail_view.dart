@@ -17,10 +17,10 @@
 
 import 'dart:async';
 
+import 'package:comic_nyaa/utils/message.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
-import 'package:fluttertoast/fluttertoast.dart';
 import 'package:pull_to_refresh/pull_to_refresh.dart';
 import 'package:comic_nyaa/library/mio/core/mio.dart';
 import 'package:comic_nyaa/library/mio/model/data_origin.dart';
@@ -91,7 +91,7 @@ class _ComicDetailViewState extends State<ComicDetailView> with TickerProviderSt
         _children.addAll(models);
       });
     } catch (e) {
-      Fluttertoast.showToast(msg: 'ERROR: ${e.toString()}');
+      Message.show(msg: 'ERROR: ${e.toString()}');
       print('ERROR: ${e.toString()}');
     }
     return data;
@@ -161,7 +161,7 @@ class _ComicDetailViewState extends State<ComicDetailView> with TickerProviderSt
                                   iconSize: 32,
                                   onPressed: () async {
                                     (await NyaaDownloadManager.instance).add(_model);
-                                    Fluttertoast.showToast(msg: '下载已添加：${_model.title}');
+                                    Message.show(msg: '下载已添加：${_model.title}');
                                   },
                                   icon: const Icon(
                                     Icons.download,

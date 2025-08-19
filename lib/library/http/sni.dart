@@ -35,6 +35,7 @@ getIpFromGf( String host) async {
   final dnsResponse = await Http.client.post(Uri.parse('https://geekflare.com/api/geekflare-api/dnsrecord'), headers: headers, body: '{"url":"$host"}');
   final dns = Map<String, dynamic>.from(jsonDecode(dnsResponse.body));
   final targetIp = dns['data']['A'][0]['address'];
+  
   return targetIp;
 }
 
