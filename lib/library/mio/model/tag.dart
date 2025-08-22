@@ -15,8 +15,6 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import 'package:tuple/tuple.dart';
-
 enum TagType {
   general('General', '#0075f8'),
   artist('Artist', '#c00004'),

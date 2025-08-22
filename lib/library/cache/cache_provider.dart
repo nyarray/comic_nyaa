@@ -17,7 +17,6 @@
 
 import 'dart:convert';
 import 'dart:typed_data';
-import 'package:archive/archive.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 
 class CacheProvider {
@@ -41,9 +40,9 @@ class CacheProvider {
 
   bool put(String key, Uint8List bytes) {
     try {
-      if (enableGZip) {
-        bytes = Uint8List.fromList(GZipEncoder().encode(bytes)!);
-      }
+      // if (enableGZip) {
+      //   bytes = Uint8List.fromList(GZipEncoder().encode(bytes)!);
+      // }
       _cacheManager.putFile(key, bytes, eTag: key, maxAge: maxAge);
     } catch (e) {
       print('CACHE ERROR::: key=$key');
@@ -54,13 +53,14 @@ class CacheProvider {
   Future<Uint8List?> get(String key) async {
     final fileInfo = await _cacheManager.getFileFromCache(key);
     final bytes = await fileInfo?.file.readAsBytes();
-    if (enableGZip) {
-      return bytes != null
-          ? Uint8List.fromList(const GZipDecoder().decodeBytes(bytes))
-          : null;
-    } else {
-      return bytes;
-    }
+    return bytes;
+    // if (enableGZip) {
+    //   return bytes != null
+    //       ? Uint8List.fromList(const GZipDecoder().decodeBytes(bytes))
+    //       : null;
+    // } else {
+    //   return bytes;
+    // }
   }
 
   Future<String?> getAsString(String key) async {

@@ -44,7 +44,7 @@ class Http {
       }
       onProgress?.call(bytes.length, total);
       File(path).writeAsBytes(bytes);
-    } catch(e) {
+    } catch (e) {
       rethrow;
     } finally {
       client.close();

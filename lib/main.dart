@@ -104,17 +104,18 @@ class _ComicNyaaState extends State<ComicNyaa> {
   }
 
   void _initialized() {
-
     if (!kIsWeb) {
       // 初始化显示模式
       setOptimalDisplayMode();
     }
 
-    // 初始化Mio
+    // 初始化Mio  
     Mio.setCustomRequest((url, {Map<String, String>? headers}) async {
-          WidgetsFlutterBinding.ensureInitialized();
-    HttpProxy httpProxy = await HttpProxy.createHttpProxy();
-    HttpOverrides.global = httpProxy;
+      if (Platform.isAndroid) {
+        WidgetsFlutterBinding.ensureInitialized();
+        HttpProxy httpProxy = await HttpProxy.createHttpProxy();
+        HttpOverrides.global = httpProxy;
+      }
       // 发送请求 Http Client
       headers ??= <String, String>{};
       // 域前置解析
@@ -122,19 +123,19 @@ class _ComicNyaaState extends State<ComicNyaa> {
       // print('REQUEST::: $url');
       // print('HEADERS::: $headers');
       // 读取缓存
-      final cache = await HttpCache.instance.getAsString(url);
-      if (cache != null) {
-        print('HTTP_CACHE_MANAGER::: READ <<<<<<<<<<<<<<<<< $url');
-        return cache;
-      }
+      // final cache = await HttpCache.instance.getAsString(url);
+      // if (cache != null) {
+      //   print('HTTP_CACHE_MANAGER::: READ <<<<<<<<<<<<<<<<< $url');
+      //   return cache;
+      // }
       final response = await Http.client.get(Uri.parse(url), headers: headers);
       final body = response.body;
       // print('RESPONSE::: $body');
       // 写入缓存
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        HttpCache.instance.put(url, response.bodyBytes);
-        print('HTTP_CACHE_MANAGER::: WRITE >>>>>>>>>>>>>>>>>>>> $url');
-      }
+      // if (response.statusCode >= 200 && response.statusCode < 300) {
+      //   HttpCache.instance.put(url, response.bodyBytes);
+      //   print('HTTP_CACHE_MANAGER::: WRITE >>>>>>>>>>>>>>>>>>>> $url');
+      // }
       return body;
     });
     // 初始化下载管理

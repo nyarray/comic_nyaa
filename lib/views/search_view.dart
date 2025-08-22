@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class SearchView extends ConsumerWidget {
-  const SearchView({super.key});
+  final void Function()? onClose;
+  final void Function(String query)? onSearch;
+  SearchView({this.onClose, this.onSearch, super.key});
+  bool _isInited = false;
   String _onSuggestQuery(String query, [String? suggest]) {
     print('MainView::_onSuggestQuery ==> query: $query, suggest: $suggest');
     if (suggest != null) {
@@ -12,26 +15,51 @@ class SearchView extends ConsumerWidget {
     }
     return query;
   }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Column(children: [
+    SearchController controller = SearchController();
+    return Container(
+        // color: Colors.white,
+        child: Column(children: [
       SearchAnchor(
-        
+        searchController: controller,
+          // isFullScreen: true,
+          viewOnChanged: (value) {},
+          viewTrailing: [
+            InkWell(
+                child: const Icon(Icons.search),
+                onTap: () => onSearch?.call(controller.text))
+          ],
           builder: (BuildContext context, SearchController controller) {
+            // controller.addListener(listener)
+            WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
+              if (!_isInited) {
+                _isInited = true;
+                if (!controller.isOpen) controller.openView();
+              }
+            });
             return SearchBar(
-              onTap: () => controller.openView(),
-              
-              leading: const Icon(Icons.search),
-                trailing: [InkWell(
-                    child: const Icon(Icons.close),
-                    onTap: () => Navigator.pop(context))]);
+                autoFocus: true,
+                onTapOutside: (event) {
+                  onClose?.call();
+                  print('EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE');
+                },
+                onTap: () => controller.openView(),
+                leading: const Icon(Icons.search),
+                trailing: [
+                  // InkWell(
+                  //     child: const Icon(Icons.close),
+                  //     onTap: () => onClose?.call())
+                ]);
           },
           suggestionsBuilder:
               (BuildContext context, SearchController controller) =>
                   List.generate(5, (i) => Text("Test ${i}")))
-    ]);
+    ]));
   }
 }
+
 // Column(children: [
 //       Padding(
 //           padding: EdgeInsets.fromLTRB(8, topPadding, 8, 0),

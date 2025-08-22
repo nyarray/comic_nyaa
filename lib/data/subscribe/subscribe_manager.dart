@@ -17,12 +17,10 @@
 
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:collection/collection.dart';
 import 'package:comic_nyaa/utils/extensions.dart';
 import 'package:comic_nyaa/utils/uri_extensions.dart';
-import 'package:sqflite/sqflite.dart';
 
 import '../../app/app_config.dart';
 import '../../library/http/http.dart';

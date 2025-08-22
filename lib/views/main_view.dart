@@ -16,11 +16,9 @@
  */
 
 import 'dart:async';
-import 'dart:collection';
 import 'package:collection/collection.dart';
 import 'package:comic_nyaa/utils/fixed_queue.dart';
 import 'package:comic_nyaa/utils/message.dart';
-import 'package:comic_nyaa/utils/flutter_utils.dart';
 import 'package:comic_nyaa/views/search_view.dart';
 import 'package:comic_nyaa/widget/back_control.dart';
 import 'package:comic_nyaa/views/drawer/nyaa_end_drawer.dart';
@@ -35,8 +33,6 @@ import 'package:comic_nyaa/views/pages/gallery_view.dart';
 
 import 'package:comic_nyaa/data/subscribe/subscribe_manager.dart';
 import 'package:comic_nyaa/views/drawer/nyaa_drawer.dart';
-
-import '../library/mio/model/tag.dart';
 
 class MainView extends StatefulWidget {
   const MainView(
@@ -61,6 +57,7 @@ class MainViewState extends State<MainView> with TickerProviderStateMixin {
   // List<Tag> _autoSuggest = [];
   int _lastScrollPosition = 0;
   // String _keywords = '';
+  bool _isSearching = false;
 
   final _tabColors = [
     Colors.teal,
@@ -80,7 +77,7 @@ class MainViewState extends State<MainView> with TickerProviderStateMixin {
       _viewQueue.add(_buildView(site));
     });
   }
-  
+
   Future<void> _initialize() async {
     await _checkPluginsUpdate();
     setState(() {
@@ -89,7 +86,8 @@ class MainViewState extends State<MainView> with TickerProviderStateMixin {
       if (widget.site != null) {
         _newView(widget.site!);
       } else {
-        _newView(_sites.firstWhereOrNull((site) => site.id == 920) ?? _sites[0]);
+        _newView(
+            _sites.firstWhereOrNull((site) => site.id == 920) ?? _sites[0]);
       }
 
       _listenGalleryScroll();
@@ -179,10 +177,9 @@ class MainViewState extends State<MainView> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    final view = _buildMain();
     return Scaffold(
       key: globalKey,
-      appBar: _buildAppBar(),
+      // appBar: _buildAppBar(),
       drawerEdgeDragWidth: 64,
       drawerEnableOpenDragGesture: true,
       endDrawerEnableOpenDragGesture: true,
@@ -193,8 +190,8 @@ class MainViewState extends State<MainView> with TickerProviderStateMixin {
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       floatingActionButtonAnimator: FloatingActionButtonAnimator.scaling,
       body: widget.enableBackControl
-          ? BackControl(child: view, onBack: () => !_onBackPress())
-          : view,
+          ? BackControl(child: _buildMain(), onBack: () => !_onBackPress())
+          : _buildMain(),
     );
   }
 
@@ -211,15 +208,27 @@ class MainViewState extends State<MainView> with TickerProviderStateMixin {
 
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
-        title: Text(_view?.site.name ?? 'ComicNyaa'),
-        leading: InkWell(
+      title: Text(_view?.site.name ?? 'ComicNyaa'),
+      leading: InkWell(
           child: const Icon(Icons.search),
-          onTap: () => RouteUtil.push(context, _buildFloatingSearchBar()),
-        ));
+          onTap: () => setState(() {
+                _isSearching = !_isSearching;
+              })
+          // onTap: () => RouteUtil.push(context, _buildFloatingSearchBar()),
+          ),
+      actions: [
+      ],
+    );
   }
 
   Widget _buildMain() {
-    return _view ?? Container();
+    return Column(
+      children: [
+        // Stack(children: [ _buildFloatingSearchBar(), _buildAppBar()]),
+        _isSearching ? _buildFloatingSearchBar() : _buildAppBar(),
+        _view ?? Container()
+      ],
+    );
   }
 
   GalleryView _buildView(Site site) {
@@ -242,10 +251,10 @@ class MainViewState extends State<MainView> with TickerProviderStateMixin {
         child: _view?.controller.selects.isEmpty == true
             ? FloatingActionButton(
                 backgroundColor: Colors.white,
-                onPressed: () => _view?.controller.scrollController
-                    ?.animateTo(0,
-                        duration: const Duration(milliseconds: 1000),
-                        curve: Curves.ease),
+                onPressed: () => _view?.controller.scrollController?.animateTo(
+                    0,
+                    duration: const Duration(milliseconds: 1000),
+                    curve: Curves.ease),
                 tooltip: 'Top',
                 child: const Icon(Icons.arrow_upward),
               )
@@ -260,11 +269,13 @@ class MainViewState extends State<MainView> with TickerProviderStateMixin {
   }
 
   Widget _buildFloatingSearchBar() {
-    final isPortrait =
-        MediaQuery.of(context).orientation == Orientation.portrait;
-    final topPadding = MediaQuery.of(context).padding.top;
-    final controller = SearchController();
-    return const SearchView();
+    // final isPortrait =
+    // MediaQuery.of(context).orientation == Orientation.portrait;
+    // final topPadding = MediaQuery.of(context).padding.top;
+    // final controller = SearchController();
+    return SearchView(onClose: () => setState(() => _isSearching = false), onSearch: (query) {
+      _onSearch(query);
+    },);
 
     // FloatingSearchBar(
     //     controller: _floatingSearchBarController,

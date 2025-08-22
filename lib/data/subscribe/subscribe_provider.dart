@@ -90,8 +90,7 @@ class SubscribeProvider {
   }
 
   Future<int> delete(Subscribe item) async {
-    return await _db
-        .delete(tableSubscribe, where: '$columnId = ?', whereArgs: [item.id]);
+    return deleteById(item.id!);
   }
 
   Future<int> update(Subscribe task) async {
