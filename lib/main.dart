@@ -48,8 +48,7 @@ void main() async {
     statusBarColor: Colors.transparent,
   ));
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
-  runApp(const MaterialApp(home: ComicNyaa()));
-  // runApp(const GetMaterialApp(home: ComicNyaa()));
+  runApp(const MaterialApp(debugShowCheckedModeBanner: false, home: ComicNyaa()));
   FlutterNativeSplash.remove();
 }
 

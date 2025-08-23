@@ -27,8 +27,7 @@ class SearchAutoSuggest extends TagAutoSuggest {
   static const tableName = 'tags';
   static const columnTag = 'tag';
   static const columnAlias = 'tag';
-  static final assetsDatabasePath = path.join('assets', 'data', databaseName);
-
+  static const assetsDatabasePath = 'assets/data/$databaseName';
   SearchAutoSuggest._();
 
   static SearchAutoSuggest? _instance;
@@ -75,11 +74,23 @@ class SearchAutoSuggest extends TagAutoSuggest {
   @override
   Future<List<Tag>> queryAutoSuggest(String query, {int? limit}) async {
     final db = await getDatabase();
-    query = query.replaceAll('_', '\\_').replaceAll('%', '\\%').replaceAll('[', '\\[');
-    final result = await db.rawQuery(
-        'SELECT * FROM $tableName WHERE $columnTag LIKE \'%$query%\' ESCAPE \'\\\' OR $columnAlias LIKE \'%$query%\' ESCAPE \'\\\' ${limit != null ? ' LIMIT $limit' : ''}');
+    // query = query
+    //     .replaceAll('_', '\\_')
+    //     .replaceAll('%', '\\%')
+    //     .replaceAll('[', '\\[');
+    final result = await db.query(
+      'tags',
+      where: '$columnTag LIKE ? ESCAPE ? OR $columnAlias LIKE ? ESCAPE ?',
+      whereArgs: ['%$query%', r'\', '%$query%', r'\'],
+      limit: limit,
+    );
+    // final result = await db.rawQuery(
+    //     'SELECT * FROM $tableName WHERE $columnTag LIKE \'%$query%\' ESCAPE \'\\\' OR $columnAlias LIKE \'%$query%\' ESCAPE \'\\\' ${limit != null ? ' LIMIT $limit' : ''}');
     return result.map((item) {
-      return Tag(label: item['tag'] as String, typeCode: item['type'] as int, alias: item['alias'] as String);
+      return Tag(
+          label: item['tag'] as String,
+          typeCode: item['type'] as int,
+          alias: item['alias'] as String);
     }).toList();
   }
 }

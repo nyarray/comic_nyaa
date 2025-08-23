@@ -269,7 +269,7 @@ class _GalleryViewState extends State<GalleryView>
   Widget build(BuildContext context) {
     super.build(context);
     // _topOffset = kToolbarHeight + MediaQuery.of(context).viewPadding.top;
-    return Flexible(child: RawScrollbar(
+    return RawScrollbar(
             controller: _scrollController,
             thickness: 4,
             thumbVisibility: true,
@@ -305,7 +305,7 @@ class _GalleryViewState extends State<GalleryView>
                           'No data',
                           style: TextStyle(fontSize: 24),
                         ),
-                      ))));
+                      )));
   }
 
   Widget _buildItem(context, index) {

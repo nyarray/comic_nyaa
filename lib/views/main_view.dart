@@ -23,6 +23,7 @@ import 'package:comic_nyaa/views/search_view.dart';
 import 'package:comic_nyaa/widget/back_control.dart';
 import 'package:comic_nyaa/views/drawer/nyaa_end_drawer.dart';
 import 'package:comic_nyaa/widget/empty_data.dart';
+import 'package:comic_nyaa/widget/simple_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:comic_nyaa/library/mio/model/site.dart';
 import 'package:comic_nyaa/library/mio/core/site_manager.dart';
@@ -51,7 +52,7 @@ class MainViewState extends State<MainView> with TickerProviderStateMixin {
 
   // final FloatingSearchBarController _floatingSearchBarController =
   //     FloatingSearchBarController();
-  final RecyclerQueue<GalleryView> _viewQueue = RecyclerQueue(3);
+  final RecyclerQueue<GalleryView> _viewQueue = RecyclerQueue(1);
   ScrollController? _viewScrollController;
   List<Site> _sites = [];
   // List<Tag> _autoSuggest = [];
@@ -170,16 +171,14 @@ class MainViewState extends State<MainView> with TickerProviderStateMixin {
   }
 
   void _onSearch(String query) async {
-    // _floatingSearchBarController.close();
     _view?.controller.search?.call(query);
-    // setState(() => _floatingSearchBarController.query = query);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       key: globalKey,
-      // appBar: _buildAppBar(),
+      appBar: _buildAppBar(),
       drawerEdgeDragWidth: 64,
       drawerEnableOpenDragGesture: true,
       endDrawerEnableOpenDragGesture: true,
@@ -208,36 +207,32 @@ class MainViewState extends State<MainView> with TickerProviderStateMixin {
 
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
-      title: Text(_view?.site.name ?? 'ComicNyaa'),
-      leading: InkWell(
-          child: const Icon(Icons.search),
-          onTap: () => setState(() {
-                _isSearching = !_isSearching;
-              })
-          // onTap: () => RouteUtil.push(context, _buildFloatingSearchBar()),
-          ),
+      title: Row(children: [
+        Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: SimpleNetworkImage(_view?.site.icon ?? '')),
+        Text(_view?.site.name ?? 'ComicNyaa')
+      ]),
       actions: [
+        _buildFloatingSearchBar(),
+        IconButton(
+            icon: const Icon(Icons.menu),
+            onPressed: () => globalKey.currentState?.openEndDrawer())
       ],
     );
   }
 
   Widget _buildMain() {
-    return Column(
-      children: [
-        // Stack(children: [ _buildFloatingSearchBar(), _buildAppBar()]),
-        _isSearching ? _buildFloatingSearchBar() : _buildAppBar(),
-        _view ?? Container()
-      ],
-    );
+    return _view ?? Container();
   }
 
   GalleryView _buildView(Site site) {
-    final color = Colors.white;
+    const color = Colors.white;
     return GalleryView(
       site: site,
       heroKey: site.id.toString(),
       // color: color,
-      empty: EmptyData(
+      empty: const EmptyData(
         text: '无可用数据',
         color: color,
         textColor: color,
@@ -272,150 +267,19 @@ class MainViewState extends State<MainView> with TickerProviderStateMixin {
     // final isPortrait =
     // MediaQuery.of(context).orientation == Orientation.portrait;
     // final topPadding = MediaQuery.of(context).padding.top;
-    // final controller = SearchController();
-    return SearchView(onClose: () => setState(() => _isSearching = false), onSearch: (query) {
-      _onSearch(query);
-    },);
-
-    // FloatingSearchBar(
-    //     controller: _floatingSearchBarController,
-    //     automaticallyImplyDrawerHamburger: false,
-    //     automaticallyImplyBackButton: false,
-    //     hint: 'Search...',
-    //     scrollPadding: const EdgeInsets.only(top: 8, bottom: 8),
-    //     // implicitDuration: const Duration(milliseconds: 250),
-    //     transitionDuration: const Duration(milliseconds: 200),
-    //     debounceDelay: const Duration(milliseconds: 500),
-    //     transitionCurve: Curves.easeInOut,
-    //     // physics: const BouncingScrollPhysics(),
-    //     axisAlignment: isPortrait ? 0.0 : -1.0,
-    //     openAxisAlignment: 0.0,
-    //     width: isPortrait ? 600 : 500,
-    //     clearQueryOnClose: false,
-    //     closeOnBaTkdropTap: true,
-    //     hintStyle: const TextStyle(
-    //         fontFamily: AppConfig.uiFontFamily,
-    //         fontSize: 16,
-    //         color: Colors.black26),
-    //     queryStyle:
-    //         const TextStyle(fontFamily: AppConfig.uiFontFamily, fontSize: 16),
-    //     onQueryChanged: (query) async {
-    //       _keywords = query;
-    //       const limit = 20;
-    //       final lastWordIndex = query.lastIndexOf(' ');
-    //       final word =
-    //           query.substring(lastWordIndex > 0 ? lastWordIndex : 0).trim();
-    //       // print('QUERY: $word');
-    //       final autosuggest = await SearchAutoSuggest.instance
-    //           .queryAutoSuggest(word, limit: limit);
-    //       // print('RESULT:: $autosuggest');
-    //       setState(() =>  = autosuggest);
-    //     },
-    //     transition: CircularFloatingSearchBarTransition(),
-    //     leadingActions: [
-    //       FloatingSearchBarAction.hamburgerToBack(),
-    //       FloatingSearchBarAction(
-    //           showIfOpened: true,
-    //           child: SizedBox(
-    //               width: 24,
-    //               height: 24,
-    //               child: SimpleNetworkImage(_currentTab?.site.icon ?? '',
-    //                   error: Text(
-    //                     _currentTab?.site.name?.substring(0, 1) ?? '',
-    //                     style: const TextStyle(
-    //                         fontFamily: AppConfig.uiFontFamily,
-    //                         fontSize: 18,
-    //                         color: Colors.teal),
-    //                   )))),
-    //     ],
-    //     actions: [
-    //       FloatingSearchBarAction(
-    //         showIfOpened: false,
-    //         child: CircularButton(
-    //           icon: const Icon(Icons.send_time_extension),
-    //           onPressed: () => globalKey.currentState?.openEndDrawer(),
-    //         ),
-    //       ),
-    //       FloatingSearchBarAction.searchToClear(
-    //         showIfClosed: false,
-    //       ),
-    //     ],
-    //     onSubmitted: (query) => _onSearch(query),
-    //     onFocusChanged: (isFocus) {
-    //       if (!isFocus) {
-    //         if (_floatingSearchBarController.query !=
-    //             _currentTab?.controller.keywords) {
-    //           setState(() => _floatingSearchBarController.query =
-    //               _currentTab?.controller.keywords ?? '');
-    //         }
-    //       }
-    //     },
-    //     builder: (context, transition) => Material(
-    //           color: Colors.white,
-    //           elevation: 4.0,
-    //           borderRadius: BorderRadius.circular(4),
-    //           child: Column(
-    //             crossAxisAlignment: CrossAxisAlignment.stretch,
-    //             children: _autosuggest
-    //                 .map(
-    //                   (suggest) => ListTile(
-    //                     minLeadingWidth: 16,
-    //                     dense: true,
-    //                     visualDensity: VisualDensity.compact,
-    //                     onTap: () => _onSearch(
-    //                         _onSuggestQuery(_keywords, suggest.label)),
-    //                     leading: const Icon(
-    //                       Icons.search,
-    //                     ),
-    //                     title: Text(
-    //                       suggest.label,
-    //                       style: TextStyle(
-    //                           fontFamily: AppConfig.uiFontFamily,
-    //                           fontSize: 16,
-    //                           color: suggest.type != null
-    //                               ? ColorUtil.fromHex(suggest.type!.color)
-    //                               : null),
-    //                       maxLines: 1,
-    //                       overflow: TextOverflow.ellipsis,
-    //                     ),
-    //                     subtitle:
-    //                         suggest.alias != null && suggest.alias!.isNotEmpty
-    //                             ? MarqueeWidget(
-    //                                 child: Text(
-    //                                 suggest.alias!.replaceAll(',', ', '),
-    //                                 style: const TextStyle(
-    //                                     fontFamily: AppConfig.uiFontFamily,
-    //                                     fontSize: 14,
-    //                                     color: Colors.black54),
-    //                               ))
-    //                             : null,
-    //                     trailing:
-    //                         Row(mainAxisSize: MainAxisSize.min, children: [
-    //                       NyaaTagItem(
-    //                           text: suggest.type?.name ?? '',
-    //                           textStyle: const TextStyle(
-    //                               fontSize: 12, color: Colors.white),
-    //                           color: suggest.type != null
-    //                               ? ColorUtil.fromHex(suggest.type!.color)
-    //                               : null,
-    //                           isRounded: true),
-    //                       InkWell(
-    //                           onTap: () {
-    //                             _floatingSearchBarController.query =
-    //                                 _onSuggestQuery(
-    //                                     _floatingSearchBarController.query,
-    //                                     suggest.label);
-    //                           },
-    //                           child: const Icon(
-    //                             Icons.add,
-    //                             size: 32,
-    //                           )),
-    //                     ]),
-    //                   ),
-    //                 )
-    //                 .toList(),
-    //           ),
-    //         ));
+    final controller = SearchController();
+    return SearchView(
+      iconBuilder: (context, controller) => IconButton(
+        // constraints: const BoxConstraints.expand(),
+        alignment: Alignment.center,
+          onPressed: () => controller.openView(),
+          icon: const Icon(Icons.search)),
+      controller: controller,
+      onClose: () => setState(() => _isSearching = false),
+      onSearch: (query) {
+        _onSearch(query);
+      },
+    );
   }
 
   bool _onBackPress() {
