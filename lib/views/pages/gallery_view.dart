@@ -53,7 +53,8 @@ class GalleryView extends StatefulWidget {
       required this.site,
       required this.heroKey,
       this.color,
-      this.scrollbarColor, this.empty})
+      this.scrollbarColor,
+      this.empty})
       : super(key: key);
   final GalleryController controller = GalleryController();
   final Site site;
@@ -71,12 +72,12 @@ class _GalleryViewState extends State<GalleryView>
   late final ScrollController _scrollController = ScrollController();
   final RefreshController _refreshController =
       RefreshController(initialRefresh: false);
-  final Map<int, double> _heightCache = {};
-  final Map<int, TypedModel> _selects = {};
+  final Map<int, double> _itemsSizeCache = {};
+  final Map<int, TypedModel> _itemsSelected = {};
   List<TypedModel> _items = [];
-  List<TypedModel> _preloadItems = [];
-  double _topOffset = 0;
-  int _page = 1;
+  List<TypedModel> _itemsPreloaded = [];
+  // double _topOffset = 0;
+  int _page = 0;
   String _keywords = '';
   bool _isLoading = false;
 
@@ -106,54 +107,13 @@ class _GalleryViewState extends State<GalleryView>
 
   void _clearSelections() {
     setState(() {
-      _selects.clear();
-      widget.controller.onItemSelect?.call(_selects);
+      _itemsSelected.clear();
+      widget.controller.onItemSelect?.call(_itemsSelected);
     });
   }
 
-  /// 加载列表
-  Future<List<TypedModel>> _load(
-      {bool isNext = false, bool isReset = false}) async {
-    print('LIST SIZE: ${_items.length}');
-    if (_isLoading) return [];
-    try {
-      // 重置状态
-      if (isReset) {
-        _preloadItems = [];
-      }
-      // 试图获取预加载内容
-      if (_preloadItems.isNotEmpty) {
-        // print('READ PRELOAD ====================== SIZE = ${_preloadModels.length}');
-        final models = _preloadItems;
-        _page++;
-        _preloadItems = [];
-        _preload();
-        return models;
-      }
-      // 否则重新加载
-      _isLoading = true;
-      if (isNext) _page++;
-      // print('CURRENT PAGE: $_page');
-      final images = await _getModels();
-      if (images.isEmpty) {
-        if (isNext) _page--;
-        Message.show(msg: '已经到底了');
-      } else {
-        // print('SEND PRELOAD =====> PAGE = $_page');
-        _preload();
-      }
-      return images;
-    } catch (e) {
-      if (isNext) _page--;
-      Message.show(msg: 'ERROR: $e');
-    } finally {
-      _isLoading = false;
-    }
-    return [];
-  }
-
   /// 获取数据
-  Future<List<TypedModel>> _getModels(
+  Future<List<TypedModel>> _requestItems(
       {Site? site, int? page, String? keywords}) async {
     widget.controller.keywords = _keywords;
     site = site ?? _currentSite;
@@ -167,54 +127,66 @@ class _GalleryViewState extends State<GalleryView>
   }
 
   /// 预加载列表
-  Future<void> _preload() async {
-    if (_preloadItems.isNotEmpty) return;
-    final page = _page + 1;
+  // Future<void> _preload() async {
+  //   if (_itemsPreloaded.isNotEmpty) return;
+  //   final page = _page + 1;
+  //   try {
+  //     _itemsPreloaded = await _requestItems(page: page);
+  //     // 为空则返回
+  //     if (_itemsPreloaded.isEmpty) return;
+  //     // 页码改变则返回
+  //     if (page == _page + 1) {
+  //       // print('CURRENT PAGE: $_page ===> PRELOAD PAGE: $page');
+  //     } else {
+  //       _itemsPreloaded = [];
+  //       return;
+  //     }
+  //     for (var model in _itemsPreloaded) {
+  //       ExtendedImage.network(model.coverUrl ?? '')
+  //           .image
+  //           .resolve(const ImageConfiguration());
+  //       // DynamicCacheImageProvider(model.coverUrl ?? '').resolve(const ImageConfiguration());
+  //     }
+  //   } catch (e) {
+  //     print(e);
+  //   }
+  // }
+
+  void _reset() {
+    setState(() {
+      _page = 0;
+      _keywords = '';
+      _items = [];
+      _itemsSizeCache.clear();
+      _itemsPreloaded.clear();
+      _clearSelections();
+    });
+  }
+
+  Future<void> _onNext() async {
+    if (_isLoading) return;
+    _page++;
     try {
-      _preloadItems = await _getModels(page: page);
-      // 为空则返回
-      if (_preloadItems.isEmpty) return;
-      // 页码改变则返回
-      if (page == _page + 1) {
-        // print('CURRENT PAGE: $_page ===> PRELOAD PAGE: $page');
-      } else {
-        _preloadItems = [];
+      final items = await _requestItems();
+      if (items.isEmpty) {
+        Message.show(msg: '已经到底了');
         return;
       }
-      for (var model in _preloadItems) {
-        ExtendedImage.network(model.coverUrl ?? '')
-            .image
-            .resolve(const ImageConfiguration());
-        // DynamicCacheImageProvider(model.coverUrl ?? '').resolve(const ImageConfiguration());
-      }
+      // 更新status
+      setState(() => _items.addAll(items));
+      widget.controller.items = _items;
+      _refreshController.refreshCompleted();
     } catch (e) {
-      print(e);
+      Message.show(msg: e.toString());
+    } finally {
+      _isLoading = false;
     }
   }
 
-  Future<List<TypedModel>> _onNext() async {
-    if (_isLoading) return [];
-    final models = await _load(isNext: true);
-    _refreshController.loadComplete();
-    setState(() => _items.addAll(models));
-    widget.controller.items = _items;
-    return models;
-  }
-
-  Future<List<TypedModel>> _onSearch(String keywords) async {
-    setState(() {
-      _items = [];
-      _heightCache.clear();
-      _clearSelections();
-    });
-
-    _page = 1;
+  Future<void> _onSearch(String keywords) async {
+    _reset();
     _keywords = keywords;
-    final models = await _load(isReset: true);
-    _refreshController.refreshCompleted();
-    setState(() => _items = models);
-    widget.controller.items = _items;
-    return models;
+    _onNext();
   }
 
   _onRefresh() async {
@@ -246,12 +218,12 @@ class _GalleryViewState extends State<GalleryView>
 
   void _onItemSelect(int index) {
     final item = _items[index];
-    setState(() => _selects.containsKey(index)
-        ? _selects.remove(index)
-        : _selects[index] = item);
-    widget.controller.selects = _selects;
+    setState(() => _itemsSelected.containsKey(index)
+        ? _itemsSelected.remove(index)
+        : _itemsSelected[index] = item);
+    widget.controller.selects = _itemsSelected;
     if (widget.controller.onItemSelect != null) {
-      widget.controller.onItemSelect!(_selects);
+      widget.controller.onItemSelect!(_itemsSelected);
     }
   }
 
@@ -269,7 +241,8 @@ class _GalleryViewState extends State<GalleryView>
   Widget build(BuildContext context) {
     super.build(context);
     // _topOffset = kToolbarHeight + MediaQuery.of(context).viewPadding.top;
-    return RawScrollbar(
+    return Flexible(
+        child: RawScrollbar(
             controller: _scrollController,
             thickness: 4,
             thumbVisibility: true,
@@ -290,7 +263,9 @@ class _GalleryViewState extends State<GalleryView>
                 onLoading: () => _onNext(),
                 physics: const BouncingScrollPhysics(),
                 // onLoading: _onLoading,
-                child: _items.isNotEmpty || _refreshController.isLoading || _refreshController.isRefresh
+                child: _items.isNotEmpty ||
+                        _refreshController.isLoading ||
+                        _refreshController.isRefresh
                     ? MasonryGridView.count(
                         // padding: EdgeInsets.fromLTRB(8, _topOffset + 8, 8, 0),
                         padding: const EdgeInsets.all(8.0),
@@ -300,12 +275,13 @@ class _GalleryViewState extends State<GalleryView>
                         itemCount: _items.length,
                         controller: _scrollController,
                         itemBuilder: _buildItem)
-                    : widget.empty ?? const Center(
-                        child: Text(
-                          'No data',
-                          style: TextStyle(fontSize: 24),
-                        ),
-                      )));
+                    : widget.empty ??
+                        const Center(
+                          child: Text(
+                            'No data',
+                            style: TextStyle(fontSize: 24),
+                          ),
+                        ))));
   }
 
   Widget _buildItem(context, index) {
@@ -314,29 +290,31 @@ class _GalleryViewState extends State<GalleryView>
     // tabIndex + url + itemIndex
     final coverUrl = _items[index].availableCoverUrl;
     final heroKey = '${widget.heroKey}-$coverUrl-$index';
+    _itemsSizeCache[index] ??= 1.33;
     return Material(
-        clipBehavior: Clip.hardEdge,
-        shadowColor: Colors.black45,
-        elevation: 2,
-        borderRadius: const BorderRadius.all(Radius.circular(4.0)),
-        child: InkStack(
-            alignment: Alignment.center,
-            splashColor: widget.color,
-            onTap: () =>
-                _selects.isEmpty ? _jump(index, heroKey) : _onItemSelect(index),
-            onLongPress: () =>
-                _selects.isEmpty ? _onItemSelect(index) : _clearSelections(),
-            children: [
-              // Column(
-              //   children: [
-              Hero(
-                  tag: heroKey,
-                  child: AnimatedSize(
-                      duration: const Duration(milliseconds: 150),
-                      curve: Curves.easeOut,
+      clipBehavior: Clip.hardEdge,
+      shadowColor: Colors.black45,
+      elevation: 2,
+      borderRadius: const BorderRadius.all(Radius.circular(4.0)),
+      child: InkStack(
+        alignment: Alignment.center,
+        splashColor: widget.color,
+        onTap: () => _itemsSelected.isEmpty
+            ? _jump(index, heroKey)
+            : _onItemSelect(index),
+        onLongPress: () =>
+            _itemsSelected.isEmpty ? _onItemSelect(index) : _clearSelections(),
+        children: [
+          Column(children: [
+            Hero(
+              tag: heroKey,
+              child: AnimatedSize(
+                  duration: const Duration(milliseconds: 150),
+                  curve: Curves.easeOut,
+                  child: AspectRatio(
+                      aspectRatio: _itemsSizeCache[index]!,
                       child: ExtendedImage.network(coverUrl,
                           headers: _currentSite?.headers,
-                          height: _heightCache[index],
                           opacity: controller,
                           fit: BoxFit.cover,
                           filterQuality: FilterQuality.low,
@@ -362,43 +340,49 @@ class _GalleryViewState extends State<GalleryView>
                             return const AspectRatio(
                                 aspectRatio: 0.66,
                                 child:
-                                    Icon(Icons.image_not_supported, size: 64));
+                                    Icon(Icons.image_not_supported, size: 32));
                           case LoadState.completed:
                             controller.forward();
                             return null;
                         }
                       }, afterPaintImage: (canvas, rect, image, paint) {
-                        _heightCache[index] = rect.height;
+                        WidgetsBinding.instance.addPostFrameCallback((t) {
+                          setState(() {
+                            _itemsSizeCache[index] = image.width / image.height;
+                          });
+                        });
+                        // _heightCache[index] = rect.height;
                       }))),
-              // Container(
-              //   padding: const EdgeInsets.all(8.0),
-              //   child: Text(
-              //     _models[index].title ?? '',
-              //     maxLines: 3,
-              //   ),
-              // )
-              //   ],
-              // ),
-              _selects.containsKey(index)
-                  ? Positioned.fill(
-                      child: Container(
-                          color: widget.color?.withOpacity(.33),
-                          alignment: Alignment.bottomRight,
-                          child: triangle(
-                            width: 32,
-                            height: 32,
-                            color:
-                                widget.color ?? Theme.of(context).primaryColor,
-                            direction: TriangleDirection.bottomRight,
-                            contentAlignment: Alignment.bottomRight,
-                            child: const Icon(
-                              Icons.check_rounded,
-                              color: Colors.white,
-                              size: 18,
-                            ),
-                          )))
-                  : Container(),
-            ]));
+            ),
+            Container(
+              padding: const EdgeInsets.all(8.0),
+              child: Text(
+                _items[index].title ?? '',
+                maxLines: 3,
+              ),
+            ),
+          ]),
+          _itemsSelected.containsKey(index)
+              ? Positioned.fill(
+                  child: Container(
+                      color: widget.color?.withOpacity(.33),
+                      alignment: Alignment.bottomRight,
+                      child: triangle(
+                        width: 32,
+                        height: 32,
+                        color: widget.color ?? Theme.of(context).primaryColor,
+                        direction: TriangleDirection.bottomRight,
+                        contentAlignment: Alignment.bottomRight,
+                        child: const Icon(
+                          Icons.check_rounded,
+                          color: Colors.white,
+                          size: 18,
+                        ),
+                      )))
+              : Container(),
+        ],
+      ),
+    );
   }
 
   @override
