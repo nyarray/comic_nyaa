@@ -32,7 +32,7 @@ import 'nyaa_download_task.dart';
 class NyaaDownloadTaskQueue extends DownloadTaskQueue<NyaaDownloadTask> {
   int? id;
   late String directory;
-  late DownloadResourceLevel level;
+  late DownloadSourceQuality level;
   late TypedModel parent;
   late String title;
   late String cover;
@@ -45,7 +45,7 @@ class NyaaDownloadTaskQueue extends DownloadTaskQueue<NyaaDownloadTask> {
     title = data['title'];
     path = data['path'];
     url = data['url'];
-    level = DownloadResourceLevel.fromDbValue(data['level']);
+    level = DownloadSourceQuality.fromDbValue(data['level']);
     status = DownloadStatus.fromDbValue(data['status']);
     parent = TypedModel.fromJson(jsonDecode(data['parent']));
     progress = DownloadProgress(data['completedLength'], data['totalLength']);
@@ -142,7 +142,7 @@ class NyaaDownloadTaskQueue extends DownloadTaskQueue<NyaaDownloadTask> {
       {required this.parent,
       required this.directory,
       required DateTime createDate,
-      this.level = DownloadResourceLevel.medium})
+      this.level = DownloadSourceQuality.medium})
       : super(createDate) {
     cover = parent.coverUrl ?? '';
     title = parent.title ?? '';

@@ -17,9 +17,9 @@
 
 import 'dart:async';
 import 'dart:io' show HttpOverrides, Platform;
+import 'dart:ui';
 import 'package:comic_nyaa/app/app_preference.dart';
 import 'package:comic_nyaa/data/download/nyaa_download_manager.dart';
-import 'package:comic_nyaa/data/http_cache_provider.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -30,7 +30,6 @@ import 'package:http_proxy/http_proxy.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'app/app_config.dart';
 import 'library/http/http.dart';
-import 'library/http/sni.dart' as sni;
 import 'library/mio/core/mio.dart';
 import 'views/main_view.dart';
 
@@ -42,14 +41,15 @@ void main() async {
     final license = await rootBundle.loadString('google_fonts/OFL.txt');
     yield LicenseEntryWithLineBreaks(['google_fonts'], license);
   });
-  // 初始化数据库
-  initializeDatabase();
   // 隐藏状态栏
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.leanBack);
   // 透明状态栏
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
   ));
+  // 初始化数据库
+  initializeDatabase();
+  // 白屏优化
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
   runApp(const ProviderScope(child: ComicNyaa()));
   FlutterNativeSplash.remove();
@@ -57,19 +57,24 @@ void main() async {
 
 void initializeDatabase() {
   // Web 环境
-  if (kIsWeb) {
-    // 本地环境
-  } else {
-    // 桌面端
+  if (!kIsWeb) {
+    // 桌面
     if (Platform.isWindows || Platform.isLinux) {
       databaseFactory = databaseFactoryFfi;
-      // 移动端
-    } else {}
-    // Initialize FFI
-    sqfliteFfiInit();
+      // sqfliteFfiInit();
+    }
+    // sqfliteFfiInit();
   }
 }
 
+/// Windows scrolling compatibility
+class NyaaScrollBehavior extends MaterialScrollBehavior {
+  @override
+  Set<PointerDeviceKind> get dragDevices => {
+        PointerDeviceKind.touch,
+        PointerDeviceKind.mouse,
+      };
+}
 class ComicNyaa extends StatefulWidget {
   const ComicNyaa({Key? key}) : super(key: key);
 
@@ -86,6 +91,7 @@ class _ComicNyaaState extends State<ComicNyaa> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      scrollBehavior: NyaaScrollBehavior(),
       navigatorKey: navigatorKey,
       debugShowCheckedModeBanner: false,
       title: AppConfig.appName,
@@ -135,7 +141,7 @@ class _ComicNyaaState extends State<ComicNyaa> {
       final response = await Http.client.get(Uri.parse(url), headers: headers);
       final body = response.body;
 
-      print('RESPONSE::: $body');
+      // print('RESPONSE::: $body');
       // 写入缓存
       // if (response.statusCode >= 200 && response.statusCode < 300) {
       //   HttpCache.instance.put(url, response.bodyBytes);

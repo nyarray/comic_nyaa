@@ -136,7 +136,9 @@ class Mio<T extends DataModel> {
         // 判断解析末尾
         if (isMulitPage &&
             keys.length == newKeys.length &&
-            keys.equals(newKeys)) break;
+            keys.equals(newKeys)) {
+          break;
+        }
         keys = newKeys;
         // 生成新的数据源
         final newOriginInfo = DataOriginInfo(

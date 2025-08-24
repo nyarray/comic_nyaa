@@ -15,8 +15,12 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+import 'package:comic_nyaa/utils/extensions.dart';
 import 'package:comic_nyaa/utils/public_api.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 // import 'package:get/get.dart';
 
 import '../../utils/flutter_utils.dart';
@@ -25,23 +29,43 @@ import '../download_view.dart';
 import '../settings_view.dart';
 import '../subscribe_view.dart';
 
-class _NyaaDrawerController  /*extends GetxController */{
-  final banner = '';
-  final Hitokoto hitokoto = Hitokoto();
+part 'nyaa_drawer.freezed.dart';
+
+@freezed
+abstract class NyaaDrawerState with _$NyaaDrawerState {
+  const factory NyaaDrawerState({
+    @Default('') String banner,
+    @Default(Hitokoto()) Hitokoto hitokoto,
+  }) = _NyaaDrawerState;
 }
 
-class NyaaDrawer extends StatelessWidget {
+class NyaaDrawerNotifier extends Notifier<NyaaDrawerState> {
+  @override
+  NyaaDrawerState build() => const NyaaDrawerState();
+  
+  void setBanner(String url) => state = state.copyWith(banner: url);
+  void setHitokoto(Hitokoto hitokoto) =>
+      state = state.copyWith(hitokoto: hitokoto);
+}
+
+final drawerNotifierProvider =
+    NotifierProvider<NyaaDrawerNotifier, NyaaDrawerState>(
+        NyaaDrawerNotifier.new);
+
+class NyaaDrawer extends ConsumerWidget {
   const NyaaDrawer({Key? key}) : super(key: key);
 
   @override
-  Widget build(BuildContext context) {
-    final controller = _NyaaDrawerController();
-    // if (controller.banner.value.isEmpty) {
-    //   apiRandomImage().then((value) => controller.banner.value = value);
-    // }
-    // if (controller.hitokoto.value == null) {
-    //   apiHitokoto().then((value) => controller.hitokoto.value = value);
-    // }
+  Widget build(context, ref) {
+    final state = ref.watch(drawerNotifierProvider);
+    final notifier = ref.read(drawerNotifierProvider.notifier);
+    state.banner.isEmpty.also((_) => ref
+        .watch(randomImageProvider(1))
+        .whenData((data) => notifier.setBanner(data)));
+    ref
+        .watch(randomHitokotoProvider(1))
+        .whenData((data) => notifier.setHitokoto(data));
+
     return Drawer(
         child: ListView(padding: EdgeInsets.zero, children: [
       Container(
@@ -49,31 +73,29 @@ class NyaaDrawer extends StatelessWidget {
           child: Material(
               elevation: 4,
               child: Stack(children: [
-                _buildHeader(controller),
+                _buildHeader(state),
                 Positioned.fill(
                   child: Container(
-                      decoration: BoxDecoration(
-                          color: Colors.white,
-                          gradient: LinearGradient(
-                              begin: FractionalOffset.topCenter,
-                              end: FractionalOffset.bottomCenter,
-                              colors: [
-                                Colors.grey.withValues(alpha: 0.0),
-                                Colors.black45,
-                              ],
-                              stops: const [
-                                0.0,
-                                1.0
-                              ])),
-                      padding: const EdgeInsets.all(8),
-                      alignment: Alignment.bottomLeft,
-                      child: Text(
-                          controller.hitokoto.hitokoto ?? '',
-                          style: TextStyle(
-                              color: Colors.teal[100],
-                              fontSize: 16
-                          )),
-                ),)
+                    decoration: BoxDecoration(
+                        color: Colors.white,
+                        gradient: LinearGradient(
+                            begin: FractionalOffset.topCenter,
+                            end: FractionalOffset.bottomCenter,
+                            colors: [
+                              Colors.grey.withValues(alpha: 0.0),
+                              Colors.black45,
+                            ],
+                            stops: const [
+                              0.0,
+                              1.0
+                            ])),
+                    padding: const EdgeInsets.all(8),
+                    alignment: Alignment.bottomLeft,
+                    child: Text(state.hitokoto.hitokoto,
+                        style:
+                            TextStyle(color: Colors.teal[100], fontSize: 16)),
+                  ),
+                )
               ]))),
       ListTile(
           title: const Text('主页'),
@@ -100,17 +122,17 @@ class NyaaDrawer extends StatelessWidget {
     ]));
   }
 
-  Widget _buildHeader(_NyaaDrawerController controller) {
+  Widget _buildHeader(NyaaDrawerState state) {
     return Material(
-            elevation: 4,
-            child: controller.banner.isNotEmpty
-                ? SimpleNetworkImage(
-                    controller.banner,
-                    fit: BoxFit.cover,
-                    width: double.maxFinite,
-                    height: 160 + kToolbarHeight,
-                    animationDuration: Duration.zero,
-                  )
-                : Container(height: 160 + kToolbarHeight));
+        elevation: 4,
+        child: state.banner.isNotEmpty
+            ? SimpleNetworkImage(
+                state.banner,
+                fit: BoxFit.cover,
+                width: double.maxFinite,
+                height: 160 + kToolbarHeight,
+                animationDuration: Duration.zero,
+              )
+            : Container(height: 160 + kToolbarHeight));
   }
 }

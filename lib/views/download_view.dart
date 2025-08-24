@@ -43,7 +43,7 @@ class DownloadView extends StatefulWidget {
 class _DownloadViewState extends State<DownloadView> {
   List<NyaaDownloadTaskQueue> _downloadList = [];
   Timer? _timer;
-  final StateNotifier notifier = StateNotifier();
+  final DownloadStateNotifier notifier = DownloadStateNotifier();
 
   @override
   void initState() {
@@ -119,6 +119,6 @@ class _DownloadViewState extends State<DownloadView> {
   }
 }
 
-class StateNotifier extends ChangeNotifier {
+class DownloadStateNotifier extends ChangeNotifier {
   void notify() => notifyListeners();
 }

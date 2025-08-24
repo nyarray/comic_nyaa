@@ -139,13 +139,13 @@ class _SimpleImageDetailViewState extends State<SimpleImageDetailView>
           (await AppPreferences.instance).downloadResourceLevel;
       String? url;
       switch (downloadLevel) {
-        case DownloadResourceLevel.low:
+        case DownloadSourceQuality.low:
           url = model.sampleUrl ?? model.largerUrl ?? model.originUrl;
           break;
-        case DownloadResourceLevel.medium:
+        case DownloadSourceQuality.medium:
           url = model.largerUrl ?? model.originUrl ?? model.sampleUrl;
           break;
-        case DownloadResourceLevel.high:
+        case DownloadSourceQuality.high:
           url = model.originUrl ?? model.largerUrl ?? model.sampleUrl;
           break;
       }
@@ -332,7 +332,7 @@ class _SimpleImageDetailViewState extends State<SimpleImageDetailView>
                 //     }
                 //   },
                 // ),
-                  SizedBox(width: 64, height: 64, child: Container(child: Icon(Icons.add_ic_call)),),
+                  SizedBox(width: 64, height: 64, child: Container(child: const Icon(Icons.add_ic_call)),),
                   const Icon(Icons.backspace)])),
             minHeight: 64,
             maxHeight: screenHeight * 0.667,
@@ -354,7 +354,7 @@ class _SimpleImageDetailViewState extends State<SimpleImageDetailView>
                       size: 32,
                     ))),
           panelBuilder: (scrollController) => _buildScrollPanel(scrollController),
-        ),  Icon(Icons.backspace), ExtendedImage.network(
+        ),  const Icon(Icons.backspace), ExtendedImage.network(
         height: viewportHeight,
         "https://i2.hdslb.com/bfs/archive/c6cbab80edf3458b8c838d472279c537ce6ced6c.jpg@672w_378h_1c_!web-home-common-cover.avif")]));
   }

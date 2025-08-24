@@ -4,7 +4,7 @@ class RecyclerQueue<T> {
   late final Queue<T> _queue;
   late final int maxSize;
   RecyclerQueue(this.maxSize) {
-    this._queue = ListQueue(maxSize);
+    _queue = ListQueue(maxSize);
   }
 
   void add(T item) {

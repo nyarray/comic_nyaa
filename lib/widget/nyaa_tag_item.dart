@@ -45,6 +45,9 @@ class _NyaaTagItemState extends State<NyaaTagItem>
   Widget build(BuildContext context) {
     return Container(
         margin: const EdgeInsets.all(4),
+        // decoration: BoxDecoration(color: ),
+        // alignment: Alignment.center,
+
         child: Material(
             color:
                 widget.color ?? Colors.white60, //Theme.of(context).primaryColor
@@ -57,12 +60,8 @@ class _NyaaTagItemState extends State<NyaaTagItem>
                     padding: widget.padding ?? const EdgeInsets.only(left: 8, top: 4, right: 8, bottom: 4),
                     child: Text(
                       widget.text,
-                      style: widget.textStyle ?? const TextStyle(fontSize: 16, color: Colors.white),
+                      style: widget.textStyle ?? const TextStyle(fontSize: 12, color: Colors.white,height: 1.25),
                     )))));
   }
 
-  @override
-  void dispose() {
-    super.dispose();
-  }
 }

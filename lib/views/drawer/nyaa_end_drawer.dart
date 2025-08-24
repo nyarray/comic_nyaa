@@ -17,17 +17,43 @@
 
 import 'package:comic_nyaa/utils/public_api.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 import '../../app/app_config.dart';
 import '../../library/mio/model/site.dart';
 import '../../widget/simple_network_image.dart';
 
-class _NyaaEndController {
-  var expandState = <int, bool>{0: true};
-  var scrollPosition = 0.0;
-  var banner = '';
+part 'nyaa_end_drawer.freezed.dart';
+
+@freezed
+abstract class EndDrawerState with _$EndDrawerState {
+  const factory EndDrawerState({
+    @Default({0: true}) Map<int, bool> expandState,
+    @Default(0.0) double scrollPosition,
+    @Default('') String banner,
+  }) = _EndDrawerState;
 }
 
-class NyaaEndDrawer extends StatelessWidget {
+class EndDrawerNotifier extends Notifier<EndDrawerState> {
+  @override
+  EndDrawerState build() => const EndDrawerState();
+  void setExpandState(Map<int, bool> expandState) {
+    state = state.copyWith(expandState: expandState);
+  }
+
+  void setScrollPosition(double scrollPosition) {
+    state = state.copyWith(scrollPosition: scrollPosition);
+  }
+
+  void setBanner(String banner) {
+    state = state.copyWith(banner: banner);
+  }
+}
+
+final provider =
+    NotifierProvider<EndDrawerNotifier, EndDrawerState>(EndDrawerNotifier.new);
+
+class NyaaEndDrawer extends ConsumerWidget {
   NyaaEndDrawer({Key? key, required this.sites, this.onItemTap})
       : super(key: key);
 
@@ -49,11 +75,17 @@ class NyaaEndDrawer extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final controller = _NyaaEndController();
-    if (controller.banner.isEmpty) {
-      apiRandomImage().then((value) => controller.banner = value);
+  Widget build(context, ref) {
+    // final controller = _EndDrawerState();
+    final state = ref.watch(provider);
+    final notifier = ref.read(provider.notifier);
+
+    if (state.banner.isEmpty) {
+      ref
+          .watch(randomImageProvider(2))
+          .whenData((it) => notifier.setBanner(it));
     }
+    print(state);
     final siteTypeMap = <String, List<Site>>{};
     for (final site in sites) {
       final type = site.type ?? 'unknown';
@@ -72,16 +104,19 @@ class NyaaEndDrawer extends StatelessWidget {
             itemCount: group.length + 1,
             itemBuilder: (ctx, i) {
               final index = i - 1;
-              if (index < 0) return _buildHeader(controller);
+              if (index < 0) return _buildHeader(state);
               final groupItem = group[index];
               return ExpansionTile(
                 leading: Icon(
                   _getIconDataByType(groupItem.key),
                   size: 32,
                 ),
-                initiallyExpanded: controller.expandState[index] ?? false,
-                onExpansionChanged: (isExpand) =>
-                    controller.expandState[index] = isExpand,
+                initiallyExpanded: state.expandState[index] ?? false,
+                onExpansionChanged: (isExpand) {
+                  final newMap = Map<int, bool>.from(state.expandState);
+                  newMap[index] = isExpand;
+                  notifier.setExpandState(newMap);
+              },
                 title: Text(groupItem.key.toUpperCase(),
                     style: const TextStyle(fontSize: 18)),
                 children: List.generate(groupItem.value.length, (index) {
@@ -126,24 +161,25 @@ class NyaaEndDrawer extends StatelessWidget {
             }));
     WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
       if (_scrollController.positions.isNotEmpty) {
-        _scrollController.jumpTo(controller.scrollPosition);
+        _scrollController.jumpTo(state.scrollPosition);
         _scrollController.addListener(() {
-          controller.scrollPosition = _scrollController.position.pixels;
+          // state.scrollPosition = _scrollController.position.pixels;
         });
       }
     });
     return drawer;
   }
 
-  Widget _buildHeader(_NyaaEndController controller) {
+  Widget _buildHeader(EndDrawerState controller) {
     return Padding(
         padding: const EdgeInsets.only(bottom: 8),
         child: Material(
             elevation: 4,
-            child:  controller.banner.isNotEmpty
-                    ? SimpleNetworkImage(controller.banner,
-                        animationDuration: Duration.zero,
-                        fit: BoxFit.cover, height: 160 + kToolbarHeight)
-                    : Container(height: 160 + kToolbarHeight)));
+            child: controller.banner.isNotEmpty
+                ? SimpleNetworkImage(controller.banner,
+                    animationDuration: Duration.zero,
+                    fit: BoxFit.cover,
+                    height: 160 + kToolbarHeight)
+                : Container(height: 160 + kToolbarHeight)));
   }
 }

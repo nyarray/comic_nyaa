@@ -75,7 +75,7 @@ class _GalleryViewState extends State<GalleryView>
   final Map<int, double> _itemsSizeCache = {};
   final Map<int, TypedModel> _itemsSelected = {};
   List<TypedModel> _items = [];
-  List<TypedModel> _itemsPreloaded = [];
+  final List<TypedModel> _itemsPreloaded = [];
   // double _topOffset = 0;
   int _page = 0;
   String _keywords = '';

@@ -5,6 +5,19 @@ import 'package:comic_nyaa/utils/uri_extensions.dart';
 
 import '../app/app_preference.dart';
 
+extension ScopeFunctions<T> on T {
+  /// Kotlin also: 执行 block，但返回 this
+  T also(void Function(T it) block) {
+    block(this);
+    return this;
+  }
+
+  /// Kotlin let: 执行 block，并返回 block 的结果
+  R let<R>(R Function(T it) block) {
+    return block(this);
+  }
+}
+
 extension ExtendedPath on FileSystemEntity {
   Directory joinDir(Directory child) {
     return Directory(join(child.path));
@@ -20,16 +33,16 @@ extension ExtendedPath on FileSystemEntity {
 }
 
 extension TypedModelExt on TypedModel {
-  String getUrl(DownloadResourceLevel downloadResourceLevel) {
+  String getUrl(DownloadSourceQuality downloadResourceLevel) {
     String? url;
     switch (downloadResourceLevel) {
-      case DownloadResourceLevel.low:
+      case DownloadSourceQuality.low:
         url = sampleUrl ?? largerUrl ?? originUrl;
         break;
-      case DownloadResourceLevel.medium:
+      case DownloadSourceQuality.medium:
         url = largerUrl ?? originUrl ?? sampleUrl;
         break;
-      case DownloadResourceLevel.high:
+      case DownloadSourceQuality.high:
         url = originUrl ?? largerUrl ?? sampleUrl;
         break;
     }

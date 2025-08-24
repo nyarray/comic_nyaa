@@ -49,8 +49,4 @@ class _NyaaTagsState extends State<NyaaTags>
     ),);
   }
 
-  @override
-  void dispose() {
-    super.dispose();
-  }
 }
