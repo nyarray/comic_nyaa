@@ -58,7 +58,7 @@ class NyaaDrawer extends StatelessWidget {
                               begin: FractionalOffset.topCenter,
                               end: FractionalOffset.bottomCenter,
                               colors: [
-                                Colors.grey.withOpacity(0.0),
+                                Colors.grey.withValues(alpha: 0.0),
                                 Colors.black45,
                               ],
                               stops: const [

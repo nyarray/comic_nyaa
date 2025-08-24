@@ -331,7 +331,6 @@ class Mio<T extends DataModel> {
       } else if (exp.selector != null) {
         TemplateParser.eachSelector(doc, exp.selector as String,
             (result, index) {
-          // print('RRRR: $result, IIII: $index');
           // 执行最终替换，并添加到结果集
           final value =
               TemplateParser.parseRegex(result, exp.capture, exp.replacement);

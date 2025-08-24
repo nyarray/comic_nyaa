@@ -29,33 +29,37 @@ class SiteManager {
   static final Map<String, List<Site>> _targetInfo = {};
 
   SiteManager._();
+
   /// 获取所有Site的集合
   static Map<int, Site> get sites {
     return _sites;
   }
+
   /// 获取所有指定类型的Site集合
   static List<Site> getSitesByType(String type) {
-    return sites.values
-        .where((element) => element.type == type)
-        .toList();
+    return sites.values.where((element) => element.type == type).toList();
   }
+
   /// 从SiteID获取Site对象
   static Site? getSiteById(int id) {
     return _sites[id];
   }
+
   /// 从来源信息获取Site对象
   ///
   static Site? getSiteByOriginInfo(DataOriginInfo dataOrigin) {
     return getSiteById(dataOrigin.siteId!);
   }
+
   /// 规则的源信息，包括路径或者URL信息
   ///
   static Map<String, List<Site>> get targetInfo {
     return _targetInfo;
   }
+
   /// 从目录加载规则，默认加载所有.zip文件（不递归）
   ///
-  static Future<List<Site>> loadFromDirectory(Directory dir,
+  static Future<List<Site>> loadFormZips(Directory dir,
       {String suffix = '.zip', String ruleSuffix = '.json'}) async {
     final sites = <Site>[];
     await for (final file in dir.list()) {
@@ -66,15 +70,33 @@ class SiteManager {
         for (final entry in archive) {
           if (entry.isFile && entry.name.endsWith(ruleSuffix)) {
             print(entry.name);
-            final json = jsonDecode(utf8.decode(entry.content));
-            final jsonMap = Map<String, dynamic>.from(json);
-            final site = Site.fromJson(jsonMap);
+            final site = loadJson(utf8.decode(entry.content));
             sites.add(site);
             if (site.id != null) _sites[site.id!] = site;
             if (_targetInfo[file.path] == null) _targetInfo[file.path] = [];
             _targetInfo[file.path]!.add(site);
           }
         }
+      }
+    }
+    return sites;
+  }
+
+  static Site loadJson(String jsonString) {
+    final json = jsonDecode(jsonString);
+    final jsonMap = Map<String, dynamic>.from(json);
+    return Site.fromJson(jsonMap);
+  }
+
+  static Future<List<Site>> loadFormDirectory(String dir,
+      {String ruleSuffix = '.json'}) async {
+    final sites = <Site>[];
+    await for (final file in Directory(dir).list(recursive: true)) {
+      final isAllow = file.path.endsWith(ruleSuffix);
+      if (isAllow) {
+        final json = await File.fromUri(file.uri).readAsString();
+        final site = loadJson(json);
+        sites.add(site);
       }
     }
     return sites;

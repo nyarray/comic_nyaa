@@ -77,7 +77,7 @@ class SubscribeManager {
     final dir = await AppConfig.ruleDir;
     final path = await getRulePath(url);
     await Http.downloadFile(url, path);
-    await SiteManager.loadFromDirectory(dir);
+    await SiteManager.loadFormZips(dir);
     return true;
   }
 

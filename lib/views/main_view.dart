@@ -81,8 +81,11 @@ class MainViewState extends State<MainView> with TickerProviderStateMixin {
 
   Future<void> _initialize() async {
     await _checkPluginsUpdate();
+    final sites = await SiteManager.loadFormDirectory(
+        "E:/Projects/@nyarray/comic_nyaa/default");
     setState(() {
-      _sites = SiteManager.sites.values.toList();
+      // _sites = SiteManager.sites.values.toList();
+      _sites = sites;
       // 打开默认标签
       if (widget.site != null) {
         _newView(widget.site!);
@@ -103,7 +106,7 @@ class MainViewState extends State<MainView> with TickerProviderStateMixin {
 
   Future<void> _checkPluginsUpdate() async {
     final ruleDir = (await AppConfig.ruleDir);
-    await SiteManager.loadFromDirectory(ruleDir);
+    await SiteManager.loadFormZips(ruleDir);
     if (SiteManager.sites.isEmpty) {
       await (await SubscribeManager.instance).updateAllSubscribe();
     }
@@ -208,7 +211,9 @@ class MainViewState extends State<MainView> with TickerProviderStateMixin {
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
       title: Row(children: [
-        Padding(
+        Container(
+            width: 32,
+            height: 32,
             padding: const EdgeInsets.only(right: 8),
             child: SimpleNetworkImage(_view?.site.icon ?? '')),
         Text(_view?.site.name ?? 'ComicNyaa')
@@ -270,8 +275,8 @@ class MainViewState extends State<MainView> with TickerProviderStateMixin {
     final controller = SearchController();
     return SearchView(
       iconBuilder: (context, controller) => IconButton(
-        // constraints: const BoxConstraints.expand(),
-        alignment: Alignment.center,
+          // constraints: const BoxConstraints.expand(),
+          alignment: Alignment.center,
           onPressed: () => controller.openView(),
           icon: const Icon(Icons.search)),
       controller: controller,

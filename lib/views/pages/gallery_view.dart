@@ -126,32 +126,6 @@ class _GalleryViewState extends State<GalleryView>
     return List.of(results.map((item) => TypedModel.fromJson(item)));
   }
 
-  /// 预加载列表
-  // Future<void> _preload() async {
-  //   if (_itemsPreloaded.isNotEmpty) return;
-  //   final page = _page + 1;
-  //   try {
-  //     _itemsPreloaded = await _requestItems(page: page);
-  //     // 为空则返回
-  //     if (_itemsPreloaded.isEmpty) return;
-  //     // 页码改变则返回
-  //     if (page == _page + 1) {
-  //       // print('CURRENT PAGE: $_page ===> PRELOAD PAGE: $page');
-  //     } else {
-  //       _itemsPreloaded = [];
-  //       return;
-  //     }
-  //     for (var model in _itemsPreloaded) {
-  //       ExtendedImage.network(model.coverUrl ?? '')
-  //           .image
-  //           .resolve(const ImageConfiguration());
-  //       // DynamicCacheImageProvider(model.coverUrl ?? '').resolve(const ImageConfiguration());
-  //     }
-  //   } catch (e) {
-  //     print(e);
-  //   }
-  // }
-
   void _reset() {
     setState(() {
       _page = 0;
@@ -167,6 +141,7 @@ class _GalleryViewState extends State<GalleryView>
     if (_isLoading) return;
     _page++;
     try {
+      _isLoading = true;
       final items = await _requestItems();
       if (items.isEmpty) {
         Message.show(msg: '已经到底了');
@@ -175,10 +150,11 @@ class _GalleryViewState extends State<GalleryView>
       // 更新status
       setState(() => _items.addAll(items));
       widget.controller.items = _items;
-      _refreshController.refreshCompleted();
     } catch (e) {
       Message.show(msg: e.toString());
+      // rethrow;
     } finally {
+      _refreshController.refreshCompleted();
       _isLoading = false;
     }
   }
@@ -241,47 +217,45 @@ class _GalleryViewState extends State<GalleryView>
   Widget build(BuildContext context) {
     super.build(context);
     // _topOffset = kToolbarHeight + MediaQuery.of(context).viewPadding.top;
-    return Flexible(
-        child: RawScrollbar(
-            controller: _scrollController,
-            thickness: 4,
-            thumbVisibility: true,
-            thumbColor: widget.scrollbarColor ?? widget.color,
-            radius: const Radius.circular(4),
-            child: SmartRefresher(
-                enablePullDown: true,
-                enablePullUp: true,
-                header: WaterDropMaterialHeader(
-                  distance: 48,
-                  // offset: _topOffset,
-                  backgroundColor:
-                      widget.color ?? Theme.of(context).primaryColor,
-                ),
-                controller: _refreshController,
-                scrollController: _scrollController,
-                onRefresh: () => _onRefresh(),
-                onLoading: () => _onNext(),
-                physics: const BouncingScrollPhysics(),
-                // onLoading: _onLoading,
-                child: _items.isNotEmpty ||
-                        _refreshController.isLoading ||
-                        _refreshController.isRefresh
-                    ? MasonryGridView.count(
-                        // padding: EdgeInsets.fromLTRB(8, _topOffset + 8, 8, 0),
-                        padding: const EdgeInsets.all(8.0),
-                        crossAxisCount: 3,
-                        mainAxisSpacing: 8.0,
-                        crossAxisSpacing: 8.0,
-                        itemCount: _items.length,
-                        controller: _scrollController,
-                        itemBuilder: _buildItem)
-                    : widget.empty ??
-                        const Center(
-                          child: Text(
-                            'No data',
-                            style: TextStyle(fontSize: 24),
-                          ),
-                        ))));
+    return RawScrollbar(
+        controller: _scrollController,
+        thickness: 4,
+        thumbVisibility: true,
+        thumbColor: widget.scrollbarColor ?? widget.color,
+        radius: const Radius.circular(4),
+        child: SmartRefresher(
+            enablePullDown: true,
+            enablePullUp: true,
+            header: WaterDropMaterialHeader(
+              distance: 48,
+              // offset: _topOffset,
+              backgroundColor: widget.color ?? Theme.of(context).primaryColor,
+            ),
+            controller: _refreshController,
+            scrollController: _scrollController,
+            onRefresh: () => _onRefresh(),
+            onLoading: () => _onNext(),
+            physics: const BouncingScrollPhysics(),
+            // onLoading: _onLoading,
+            child: _items.isNotEmpty /*||
+                    _refreshController.isLoading ||
+                    _refreshController.isRefresh*/
+                ? MasonryGridView.count(
+                    // padding: EdgeInsets.fromLTRB(8, _topOffset + 8, 8, 0),
+                    padding: const EdgeInsets.all(8.0),
+                    crossAxisCount: 3,
+                    mainAxisSpacing: 8.0,
+                    crossAxisSpacing: 8.0,
+                    itemCount: _items.length,
+                    controller: _scrollController,
+                    itemBuilder: _buildItem)
+                : widget.empty ??
+                    const Center(
+                      child: Text(
+                        'No data',
+                        style: TextStyle(fontSize: 24),
+                      ),
+                    )));
   }
 
   Widget _buildItem(context, index) {
@@ -291,7 +265,8 @@ class _GalleryViewState extends State<GalleryView>
     final coverUrl = _items[index].availableCoverUrl;
     final heroKey = '${widget.heroKey}-$coverUrl-$index';
     _itemsSizeCache[index] ??= 1.33;
-    return Material(
+    return RepaintBoundary(
+        child: Material(
       clipBehavior: Clip.hardEdge,
       shadowColor: Colors.black45,
       elevation: 2,
@@ -365,7 +340,7 @@ class _GalleryViewState extends State<GalleryView>
           _itemsSelected.containsKey(index)
               ? Positioned.fill(
                   child: Container(
-                      color: widget.color?.withOpacity(.33),
+                      color: widget.color?.withValues(alpha: .33),
                       alignment: Alignment.bottomRight,
                       child: triangle(
                         width: 32,
@@ -382,7 +357,7 @@ class _GalleryViewState extends State<GalleryView>
               : Container(),
         ],
       ),
-    );
+    ));
   }
 
   @override
@@ -415,4 +390,30 @@ class _GalleryViewState extends State<GalleryView>
     _refreshController.dispose();
     super.dispose();
   }
+
+  /// 预加载列表
+  // Future<void> _preload() async {
+  //   if (_itemsPreloaded.isNotEmpty) return;
+  //   final page = _page + 1;
+  //   try {
+  //     _itemsPreloaded = await _requestItems(page: page);
+  //     // 为空则返回
+  //     if (_itemsPreloaded.isEmpty) return;
+  //     // 页码改变则返回
+  //     if (page == _page + 1) {
+  //       // print('CURRENT PAGE: $_page ===> PRELOAD PAGE: $page');
+  //     } else {
+  //       _itemsPreloaded = [];
+  //       return;
+  //     }
+  //     for (var model in _itemsPreloaded) {
+  //       ExtendedImage.network(model.coverUrl ?? '')
+  //           .image
+  //           .resolve(const ImageConfiguration());
+  //       // DynamicCacheImageProvider(model.coverUrl ?? '').resolve(const ImageConfiguration());
+  //     }
+  //   } catch (e) {
+  //     print(e);
+  //   }
+  // }
 }

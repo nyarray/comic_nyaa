@@ -92,12 +92,7 @@ class _SimpleNetworkImageState extends State<SimpleNetworkImage>
           case LoadState.failed:
             animationController?.forward();
             return widget.error ??
-                const AspectRatio(
-                    aspectRatio: .75,
-                    child: Icon(
-                      Icons.image_not_supported,
-                      size: 48,
-                    ));
+                const Icon(Icons.image_not_supported);
           case LoadState.completed:
             animationController?.forward();
             return null;

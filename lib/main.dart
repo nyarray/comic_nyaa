@@ -25,6 +25,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_displaymode/flutter_displaymode.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http_proxy/http_proxy.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'app/app_config.dart';
@@ -32,6 +33,8 @@ import 'library/http/http.dart';
 import 'library/http/sni.dart' as sni;
 import 'library/mio/core/mio.dart';
 import 'views/main_view.dart';
+
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
@@ -48,7 +51,7 @@ void main() async {
     statusBarColor: Colors.transparent,
   ));
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
-  runApp(const MaterialApp(debugShowCheckedModeBanner: false, home: ComicNyaa()));
+  runApp(const ProviderScope(child: ComicNyaa()));
   FlutterNativeSplash.remove();
 }
 
@@ -83,6 +86,8 @@ class _ComicNyaaState extends State<ComicNyaa> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navigatorKey,
+      debugShowCheckedModeBanner: false,
       title: AppConfig.appName,
       theme: ThemeData(
         // fontFamily: 'ComicNeue',
@@ -103,9 +108,9 @@ class _ComicNyaaState extends State<ComicNyaa> {
   }
 
   void _initialized() {
-    if (!kIsWeb) {
+    if (!Platform.isAndroid) {
       // 初始化显示模式
-      setOptimalDisplayMode();
+      // setOptimalDisplayMode();
     }
 
     // 初始化Mio  
@@ -129,7 +134,8 @@ class _ComicNyaaState extends State<ComicNyaa> {
       // }
       final response = await Http.client.get(Uri.parse(url), headers: headers);
       final body = response.body;
-      // print('RESPONSE::: $body');
+
+      print('RESPONSE::: $body');
       // 写入缓存
       // if (response.statusCode >= 200 && response.statusCode < 300) {
       //   HttpCache.instance.put(url, response.bodyBytes);
