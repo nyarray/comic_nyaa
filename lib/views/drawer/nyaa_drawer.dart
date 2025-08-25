@@ -19,7 +19,6 @@ import 'package:comic_nyaa/utils/extensions.dart';
 import 'package:comic_nyaa/utils/public_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_riverpod/legacy.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 // import 'package:get/get.dart';
 
@@ -41,8 +40,17 @@ abstract class NyaaDrawerState with _$NyaaDrawerState {
 
 class NyaaDrawerNotifier extends Notifier<NyaaDrawerState> {
   @override
-  NyaaDrawerState build() => const NyaaDrawerState();
-  
+  NyaaDrawerState build() {
+    _init();
+    return const NyaaDrawerState();
+  }
+
+  void _init() async {
+    final banner = await ref.read(randomImageProvider(1).future);
+    final hitokoto = await ref.read(randomHitokotoProvider(1).future);
+    state = state.copyWith(banner: banner, hitokoto: hitokoto);
+  }
+
   void setBanner(String url) => state = state.copyWith(banner: url);
   void setHitokoto(Hitokoto hitokoto) =>
       state = state.copyWith(hitokoto: hitokoto);
@@ -58,14 +66,6 @@ class NyaaDrawer extends ConsumerWidget {
   @override
   Widget build(context, ref) {
     final state = ref.watch(drawerNotifierProvider);
-    final notifier = ref.read(drawerNotifierProvider.notifier);
-    state.banner.isEmpty.also((_) => ref
-        .watch(randomImageProvider(1))
-        .whenData((data) => notifier.setBanner(data)));
-    ref
-        .watch(randomHitokotoProvider(1))
-        .whenData((data) => notifier.setHitokoto(data));
-
     return Drawer(
         child: ListView(padding: EdgeInsets.zero, children: [
       Container(

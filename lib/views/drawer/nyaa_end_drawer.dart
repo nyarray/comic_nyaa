@@ -36,7 +36,17 @@ abstract class EndDrawerState with _$EndDrawerState {
 
 class EndDrawerNotifier extends Notifier<EndDrawerState> {
   @override
-  EndDrawerState build() => const EndDrawerState();
+  EndDrawerState build() {
+    _init();
+    return const EndDrawerState();
+  }
+
+  
+  void _init() async {
+    final banner = await ref.watch(randomImageProvider(2).future); 
+     state = state.copyWith(banner: banner);
+  }
+
   void setExpandState(Map<int, bool> expandState) {
     state = state.copyWith(expandState: expandState);
   }
@@ -76,16 +86,9 @@ class NyaaEndDrawer extends ConsumerWidget {
 
   @override
   Widget build(context, ref) {
-    // final controller = _EndDrawerState();
     final state = ref.watch(provider);
     final notifier = ref.read(provider.notifier);
-
-    if (state.banner.isEmpty) {
-      ref
-          .watch(randomImageProvider(2))
-          .whenData((it) => notifier.setBanner(it));
-    }
-    print(state);
+    
     final siteTypeMap = <String, List<Site>>{};
     for (final site in sites) {
       final type = site.type ?? 'unknown';
@@ -116,7 +119,7 @@ class NyaaEndDrawer extends ConsumerWidget {
                   final newMap = Map<int, bool>.from(state.expandState);
                   newMap[index] = isExpand;
                   notifier.setExpandState(newMap);
-              },
+                },
                 title: Text(groupItem.key.toUpperCase(),
                     style: const TextStyle(fontSize: 18)),
                 children: List.generate(groupItem.value.length, (index) {
