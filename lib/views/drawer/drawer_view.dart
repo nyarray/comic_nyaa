@@ -15,53 +15,23 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import 'package:comic_nyaa/utils/extensions.dart';
-import 'package:comic_nyaa/utils/public_api.dart';
+import 'package:comic_nyaa/notifier/drawer_notifier.dart';
+import 'package:comic_nyaa/state/drawer_state.dart';
+import 'package:comic_nyaa/views/subscribe_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:freezed_annotation/freezed_annotation.dart';
-// import 'package:get/get.dart';
 
 import '../../utils/flutter_utils.dart';
 import '../../widget/simple_network_image.dart';
 import '../download_view.dart';
 import '../settings_view.dart';
-import '../subscribe_view.dart';
-
-part 'nyaa_drawer.freezed.dart';
-
-@freezed
-abstract class NyaaDrawerState with _$NyaaDrawerState {
-  const factory NyaaDrawerState({
-    @Default('') String banner,
-    @Default(Hitokoto()) Hitokoto hitokoto,
-  }) = _NyaaDrawerState;
-}
-
-class NyaaDrawerNotifier extends Notifier<NyaaDrawerState> {
-  @override
-  NyaaDrawerState build() {
-    _init();
-    return const NyaaDrawerState();
-  }
-
-  void _init() async {
-    final banner = await ref.read(randomImageProvider(1).future);
-    final hitokoto = await ref.read(randomHitokotoProvider(1).future);
-    state = state.copyWith(banner: banner, hitokoto: hitokoto);
-  }
-
-  void setBanner(String url) => state = state.copyWith(banner: url);
-  void setHitokoto(Hitokoto hitokoto) =>
-      state = state.copyWith(hitokoto: hitokoto);
-}
 
 final drawerNotifierProvider =
-    NotifierProvider<NyaaDrawerNotifier, NyaaDrawerState>(
-        NyaaDrawerNotifier.new);
+    NotifierProvider<DrawerNotifier, DrawerState>(
+        DrawerNotifier.new);
 
-class NyaaDrawer extends ConsumerWidget {
-  const NyaaDrawer({Key? key}) : super(key: key);
+class DrawerView extends ConsumerWidget {
+  const DrawerView({Key? key}) : super(key: key);
 
   @override
   Widget build(context, ref) {
@@ -122,7 +92,7 @@ class NyaaDrawer extends ConsumerWidget {
     ]));
   }
 
-  Widget _buildHeader(NyaaDrawerState state) {
+  Widget _buildHeader(DrawerState state) {
     return Material(
         elevation: 4,
         child: state.banner.isNotEmpty

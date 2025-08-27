@@ -67,12 +67,12 @@ class Mio<T extends DataModel> {
   /// 解析Site对象，返回结果集
   /// @returns {Promise<<T extends Meta>[]>}
   Future<List<Map<String, dynamic>>> parseSite(
-      [bool isParseChildren = false]) async {
+      [bool isParseChildren = false]) {
     final site = _site;
     final sectionName = currentSectionName;
     if (site == null) throw Exception('Site cannot be null!');
     if (sectionName == null) throw Exception('Section cannot be null!');
-    return await parseSection(site, sectionName, isParseChildren);
+    return parseSection(site, sectionName, isParseChildren);
   }
 
   /// 解析Section对象，返回结果集
@@ -90,7 +90,7 @@ class Mio<T extends DataModel> {
     }
     final result = await parseRules(section.index!, section.rules!);
     for (var item in result) {
-      item[k$origin] = DataOriginInfo(site.id!, sectionName).toJson();
+      item[k$origin] = DataOriginInfo(site.id, sectionName).toJson();
     }
     if (isParseChildren && section.rules?[k$children] != null) {
       await parseAllChildrenOfList(result, section.rules!);
@@ -308,7 +308,6 @@ class Mio<T extends DataModel> {
     // 遍历选择器集
     for (final k in rule.keys) {
       final exp = rule[k]!;
-      // print('EXP: regex=${exp?.regex}, selector=${exp?.selector}');
       final props = <String>[];
       // 使用正则匹配
       if (exp.regex != null) {

@@ -46,7 +46,7 @@ class VideoDetailViewState extends State<VideoDetailView> {
     await _controller?.dispose();
     _chewieController?.dispose();
     // 加载新URL
-    _controller = VideoPlayerController.network(url);
+    _controller = VideoPlayerController.networkUrl(Uri.parse(url));
     await _controller?.initialize();
     setState(() {
       _chewieController = ChewieController(
@@ -107,7 +107,7 @@ class VideoDetailViewState extends State<VideoDetailView> {
                     ? AspectRatio(
                         aspectRatio: _controller?.value.aspectRatio ?? 16 / 9,
                         child: Chewie(controller: _chewieController!))
-                    : const Center(child: SpinKitWave(color: Colors.teal)),
+                    : const Center(child: SpinKitPulse(color: Colors.grey)),
                   Row(
                     children: [
                       Offstage(

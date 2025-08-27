@@ -49,7 +49,6 @@ dependencies:
   sqflite: ^2.0.3+1
   crypto: ^3.0.2
   shared_preferences: ^2.0.15
-  shimmer: ^2.0.0
   sliding_up_panel: ^2.0.0+1
   url_launcher: ^6.1.5
   flutter_cache_manager: ^3.3.0
@@ -62,6 +61,8 @@ dependencies:
   path: ^1.9.1
   http_proxy: ^1.2.3
   freezed_annotation: ^3.1.0
+  html: ^0.15.6
+  flutter_hooks: ^0.21.3+1
   
 dev_dependencies:
   # Rebuild Icon: OLD: flutter pub run flutter_launcher_icons:main

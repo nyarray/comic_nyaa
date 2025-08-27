@@ -33,16 +33,29 @@ class Hitokoto {
       };
 }
 
-final randomImageProvider = FutureProvider.family<String, int>((ref, seed) async {
-  final response = await Http.client
-      .get(Uri.parse('https://random-picture.vercel.app/api/?json&seed=$seed'));
-  final json = Map<String, dynamic>.from(jsonDecode(response.body));
-  final url = json['url'].toString();
-  return url;
+final randomImageProvider =
+    FutureProvider.family<String?, int>((ref, seed) async {
+  try {
+    final response = await Http.client.post(Uri.parse('https://pic.re/image'));
+    // final response = await Http.client.get(
+        // Uri.parse('https://random-picture.vercel.app/api/?json&seed=$seed'));
+    final json = Map<String, dynamic>.from(jsonDecode(response.body));
+    final url = Uri.parse('https://${json['file_url']}').toString();
+    return url;
+  } catch (e) {
+    logger.w(e);
+    return null;
+  }
 });
 
-final randomHitokotoProvider = FutureProvider.family<Hitokoto, int>((ref, seed) async {
-  final response =
-      await Http.client.get(Uri.parse('https://v1.hitokoto.cn/?c=a&c=b&seed=$seed'));
-  return Hitokoto.fromJson(jsonDecode(response.body));
+final randomHitokotoProvider =
+    FutureProvider.family<Hitokoto?, int>((ref, seed) async {
+  try {
+    final response = await Http.client
+        .get(Uri.parse('https://v1.hitokoto.cn/?c=a&c=b&seed=$seed'));
+    return Hitokoto.fromJson(jsonDecode(response.body));
+  } catch (e) {
+    logger.w(e);
+    return null;
+  }
 });

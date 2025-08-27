@@ -17,13 +17,18 @@
 
 import 'dart:async';
 
+import 'package:comic_nyaa/notifier/gallery_notifier.dart';
+import 'package:comic_nyaa/state/gallery_state.dart';
 import 'package:comic_nyaa/utils/message.dart';
 import 'package:comic_nyaa/utils/extensions.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart';
+import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:extended_image/extended_image.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pull_to_refresh/pull_to_refresh.dart';
-import 'package:shimmer/shimmer.dart';
 import 'package:comic_nyaa/library/mio/model/site.dart';
 import 'package:comic_nyaa/library/mio/core/mio.dart';
 import 'package:comic_nyaa/models/typed_model.dart';
@@ -34,21 +39,12 @@ import 'package:comic_nyaa/views/detail/comic_detail_view.dart';
 import 'package:comic_nyaa/views/detail/video_detail_view.dart';
 import 'package:comic_nyaa/utils/flutter_utils.dart';
 
-import '../detail/image_detail_view.dart';
+final galleryProvider =
+    NotifierProvider.family<GalleryNotifier, GalleryState, int>(
+        GalleryNotifier.new);
 
-class GalleryController {
-  String keywords = '';
-  List<TypedModel> items = [];
-  ScrollController? scrollController;
-  Map<int, TypedModel> selects = {};
-  ValueChanged<Map<int, TypedModel>>? onItemSelect;
-  Future<void>? Function(String keywords)? search;
-  Future<void>? Function()? refresh;
-  late void Function() clearSelection;
-}
-
-class GalleryView extends StatefulWidget {
-  GalleryView(
+class GalleryView extends ConsumerStatefulWidget {
+  const GalleryView(
       {Key? key,
       required this.site,
       required this.heroKey,
@@ -56,7 +52,6 @@ class GalleryView extends StatefulWidget {
       this.scrollbarColor,
       this.empty})
       : super(key: key);
-  final GalleryController controller = GalleryController();
   final Site site;
   final String heroKey;
   final Color? color;
@@ -64,32 +59,39 @@ class GalleryView extends StatefulWidget {
   final Widget? empty;
 
   @override
-  State<GalleryView> createState() => _GalleryViewState();
+  ConsumerState<ConsumerStatefulWidget> createState() {
+    return GalleryViewState();
+  }
 }
 
-class _GalleryViewState extends State<GalleryView>
+class GalleryViewState extends ConsumerState<GalleryView>
     with AutomaticKeepAliveClientMixin<GalleryView>, TickerProviderStateMixin {
-  late final ScrollController _scrollController = ScrollController();
+  final ScrollController _scrollController = ScrollController();
   final RefreshController _refreshController =
       RefreshController(initialRefresh: false);
-  final Map<int, double> _itemsSizeCache = {};
-  final Map<int, TypedModel> _itemsSelected = {};
-  List<TypedModel> _items = [];
+  final Map<int, ValueNotifier<double>> _itemsRatioNotifier = {};
   final List<TypedModel> _itemsPreloaded = [];
-  // double _topOffset = 0;
   int _page = 0;
-  String _keywords = '';
+  String _query = '';
   bool _isLoading = false;
 
+  FamilyNotifierProvider<GalleryNotifier, GalleryState, int> get provider =>
+      galleryProvider(widget.site.id);
+
+  GalleryState get state => ref.watch(provider);
+  GalleryNotifier get notifier => ref.read(provider.notifier);
+
   Future<void> _initialize() async {
-    widget.controller.scrollController = _scrollController;
-    widget.controller.refresh = _refreshController.requestRefresh;
-    widget.controller.search = (String kwds) async {
-      _keywords = kwds;
+    final state = ref.watch(provider);
+    final notifier = ref.read(provider.notifier);
+
+    notifier.setClearSelection(_clearSelections);
+    notifier.setScrollController(_scrollController);
+    notifier.setRefresh(_refreshController.requestRefresh);
+    notifier.setSearch((String query) async {
+      _query = query;
       await _refreshController.requestRefresh();
-    };
-    widget.controller.clearSelection = _clearSelections;
-    setState(() {});
+    });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -106,34 +108,31 @@ class _GalleryViewState extends State<GalleryView>
   }
 
   void _clearSelections() {
-    setState(() {
-      _itemsSelected.clear();
-      widget.controller.onItemSelect?.call(_itemsSelected);
-    });
+    ref.read(provider.notifier).setSelects({});
+    ref.watch(provider).onItemSelect?.call({});
   }
 
   /// 获取数据
-  Future<List<TypedModel>> _requestItems(
+  Future<List<TypedModel>> _fetchItems(
       {Site? site, int? page, String? keywords}) async {
-    widget.controller.keywords = _keywords;
-    site = site ?? _currentSite;
-    page = page ?? _page;
-    keywords = keywords ?? _keywords;
+    site ??= _currentSite;
+    page ??= _page;
+    keywords ??= _query;
     final results = await (Mio(site)
           ..setPage(page)
           ..setKeywords(keywords))
         .parseSite();
-    return List.of(results.map((item) => TypedModel.fromJson(item)));
+    return results.map(TypedModel.fromJson).toList();
   }
 
   void _reset() {
     setState(() {
       _page = 0;
-      _keywords = '';
-      _items = [];
-      _itemsSizeCache.clear();
+      _query = '';
+      _itemsRatioNotifier.clear();
       _itemsPreloaded.clear();
       _clearSelections();
+      ref.read(provider.notifier).setItems([]);
     });
   }
 
@@ -142,14 +141,15 @@ class _GalleryViewState extends State<GalleryView>
     _page++;
     try {
       _isLoading = true;
-      final items = await _requestItems();
-      if (items.isEmpty) {
+      final results = await _fetchItems();
+      if (results.isEmpty) {
         Message.show(msg: '已经到底了');
         return;
       }
       // 更新status
-      setState(() => _items.addAll(items));
-      widget.controller.items = _items;
+      final copy = List<TypedModel>.from(state.items);
+      copy.addAll(results);
+      ref.read(provider.notifier).setItems(copy);
     } catch (e) {
       Message.show(msg: e.toString());
       // rethrow;
@@ -159,23 +159,25 @@ class _GalleryViewState extends State<GalleryView>
     }
   }
 
-  Future<void> _onSearch(String keywords) async {
+  Future<void> _onSearch(String query) async {
     _reset();
-    _keywords = keywords;
+
+    // ref.read(provider.notifier).setKeywords(_keywords);
+    _query = query;
     _onNext();
   }
 
   _onRefresh() async {
-    await _onSearch(_keywords);
+    await _onSearch(_query);
   }
 
   void _jump(int index, String? heroKey) {
-    final model = _items[index];
+    final model = state.items[index];
     Widget? target;
     switch (model.$type) {
       case 'image':
         target = ImageDetailView(
-            models: _items, heroKey: widget.heroKey, index: index);
+            models: state.items, heroKey: widget.heroKey, index: index);
         break;
       case 'video':
         target = VideoDetailView(model: model);
@@ -193,13 +195,16 @@ class _GalleryViewState extends State<GalleryView>
   }
 
   void _onItemSelect(int index) {
-    final item = _items[index];
-    setState(() => _itemsSelected.containsKey(index)
-        ? _itemsSelected.remove(index)
-        : _itemsSelected[index] = item);
-    widget.controller.selects = _itemsSelected;
-    if (widget.controller.onItemSelect != null) {
-      widget.controller.onItemSelect!(_itemsSelected);
+    final item = state.items[index];
+    final copy = Map<int, TypedModel>.from(state.selects);
+    if (copy.containsKey(index)) {
+      copy.remove(index);
+    } else {
+      copy[index] = item;
+    }
+    notifier.setSelects(copy);
+    if (state.onItemSelect != null) {
+      state.onItemSelect!(copy);
     }
   }
 
@@ -209,13 +214,17 @@ class _GalleryViewState extends State<GalleryView>
 
   @override
   void initState() {
-    _initialize();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initialize();
+    });
     super.initState();
   }
 
   @override
   Widget build(BuildContext context) {
     super.build(context);
+
+    // super.build(context);
     // _topOffset = kToolbarHeight + MediaQuery.of(context).viewPadding.top;
     return RawScrollbar(
         controller: _scrollController,
@@ -237,7 +246,8 @@ class _GalleryViewState extends State<GalleryView>
             onLoading: () => _onNext(),
             physics: const BouncingScrollPhysics(),
             // onLoading: _onLoading,
-            child: _items.isNotEmpty /*||
+            child: state.items
+                    .isNotEmpty /*||
                     _refreshController.isLoading ||
                     _refreshController.isRefresh*/
                 ? MasonryGridView.count(
@@ -246,7 +256,7 @@ class _GalleryViewState extends State<GalleryView>
                     crossAxisCount: 3,
                     mainAxisSpacing: 8.0,
                     crossAxisSpacing: 8.0,
-                    itemCount: _items.length,
+                    itemCount: state.items.length,
                     controller: _scrollController,
                     itemBuilder: _buildItem)
                 : widget.empty ??
@@ -262,9 +272,10 @@ class _GalleryViewState extends State<GalleryView>
     final controller = AnimationController(
         value: 1, duration: const Duration(milliseconds: 250), vsync: this);
     // tabIndex + url + itemIndex
-    final coverUrl = _items[index].availableCoverUrl;
+    final coverUrl = state.items[index].availableCoverUrl;
     final heroKey = '${widget.heroKey}-$coverUrl-$index';
-    _itemsSizeCache[index] ??= 1.33;
+    // 初始化默认宽高比
+    _itemsRatioNotifier.putIfAbsent(index, () => ValueNotifier<double>(1.33));
     return RepaintBoundary(
         child: Material(
       clipBehavior: Clip.hardEdge,
@@ -274,70 +285,69 @@ class _GalleryViewState extends State<GalleryView>
       child: InkStack(
         alignment: Alignment.center,
         splashColor: widget.color,
-        onTap: () => _itemsSelected.isEmpty
+        onTap: () => state.selects.isEmpty
             ? _jump(index, heroKey)
             : _onItemSelect(index),
         onLongPress: () =>
-            _itemsSelected.isEmpty ? _onItemSelect(index) : _clearSelections(),
+            state.selects.isEmpty ? _onItemSelect(index) : _clearSelections(),
         children: [
           Column(children: [
             Hero(
               tag: heroKey,
               child: AnimatedSize(
-                  duration: const Duration(milliseconds: 150),
+                  duration: const Duration(milliseconds: 200),
                   curve: Curves.easeOut,
-                  child: AspectRatio(
-                      aspectRatio: _itemsSizeCache[index]!,
-                      child: ExtendedImage.network(coverUrl,
-                          headers: _currentSite?.headers,
-                          opacity: controller,
-                          fit: BoxFit.cover,
-                          filterQuality: FilterQuality.low,
-                          retries: 2,
-                          timeRetry: const Duration(milliseconds: 500),
-                          timeLimit: const Duration(milliseconds: 5000),
-                          loadStateChanged: (state) {
-                        switch (state.extendedImageLoadState) {
-                          case LoadState.loading:
-                            controller.reset();
-                            return Shimmer.fromColors(
-                                baseColor:
-                                    const Color.fromRGBO(240, 240, 240, 1),
-                                highlightColor: Colors.white,
-                                child: AspectRatio(
-                                  aspectRatio: 0.66,
-                                  child: Container(
-                                    decoration: const BoxDecoration(
-                                        color: Colors.white),
-                                  ),
-                                ));
-                          case LoadState.failed:
-                            return const AspectRatio(
-                                aspectRatio: 0.66,
-                                child:
-                                    Icon(Icons.image_not_supported, size: 32));
-                          case LoadState.completed:
-                            controller.forward();
-                            return null;
-                        }
-                      }, afterPaintImage: (canvas, rect, image, paint) {
-                        WidgetsBinding.instance.addPostFrameCallback((t) {
-                          setState(() {
-                            _itemsSizeCache[index] = image.width / image.height;
-                          });
-                        });
-                        // _heightCache[index] = rect.height;
-                      }))),
+                  child: ValueListenableBuilder<double>(
+                      valueListenable: _itemsRatioNotifier[index]!,
+                      builder: (_, ratio, __) {
+                        return AspectRatio(
+                            aspectRatio: ratio,
+                            child: ExtendedImage.network(
+                              coverUrl,
+                              headers: _currentSite?.headers,
+                              opacity: controller,
+                              fit: BoxFit.cover,
+                              filterQuality: FilterQuality.low,
+                              retries: 2,
+                              timeRetry: const Duration(milliseconds: 500),
+                              timeLimit: const Duration(milliseconds: 5000),
+                              loadStateChanged: (state) {
+                                switch (state.extendedImageLoadState) {
+                                  case LoadState.loading:
+                                    controller.reset();
+                                    return const Center(child: SpinKitPulse(color: Colors.grey));
+                                  case LoadState.failed:
+                                    return const AspectRatio(
+                                        aspectRatio: 0.60,
+                                        child: Icon(Icons.image_not_supported,
+                                            size: 48));
+                                  case LoadState.completed:
+                                    final image =
+                                        state.extendedImageInfo?.image;
+                                    if (image != null) {
+                                      WidgetsBinding.instance
+                                          .addPostFrameCallback((_) {
+                                        _itemsRatioNotifier[index]?.value =
+                                            image.width / image.height;
+                                      });
+                                    }
+                                    controller.forward();
+                                    return null;
+                                }
+                              },
+                              // afterPaintImage: (canvas, rect, image, paint) {}
+                            ));
+                      })),
             ),
             Container(
               padding: const EdgeInsets.all(8.0),
               child: Text(
-                _items[index].title ?? '',
+                state.items[index].title ?? '',
                 maxLines: 3,
               ),
             ),
           ]),
-          _itemsSelected.containsKey(index)
+          state.selects.containsKey(index)
               ? Positioned.fill(
                   child: Container(
                       color: widget.color?.withValues(alpha: .33),
@@ -363,21 +373,16 @@ class _GalleryViewState extends State<GalleryView>
   @override
   void didUpdateWidget(covariant GalleryView oldWidget) {
     super.didUpdateWidget(oldWidget);
+
     if (widget.site.id != oldWidget.site.id) {
-      // print('didUpdateWidget:::::: NAME: ${oldWidget.site.name} >>>>>>>> ${widget.site.name}');
-      // print('didUpdateWidget:::::: DATA: ${widget.controller.items} <<<<<<<< ${oldWidget.controller.items}');
-      // 销毁被旧的滚动控制器
-      // oldWidget.controller.scrollController?.dispose();
-      setState(() {
-        WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
-          _initialize();
-          // _models = widget.controller.models;
-          // _preloadModels = [];
-          // print('FINALMODELS: $_models');
-          // _refreshController.requestRefresh();
-        });
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (state.items.isEmpty && !_isLoading) {
+          _reset();
+          _refreshController.requestRefresh();
+        }
       });
-      updateKeepAlive();
+      print(
+          'didUpdateWidget:::::: NAME: ${oldWidget.site.name} >>>>>>>> ${widget.site.name}');
     }
   }
 
@@ -392,28 +397,28 @@ class _GalleryViewState extends State<GalleryView>
   }
 
   /// 预加载列表
-  // Future<void> _preload() async {
-  //   if (_itemsPreloaded.isNotEmpty) return;
-  //   final page = _page + 1;
-  //   try {
-  //     _itemsPreloaded = await _requestItems(page: page);
-  //     // 为空则返回
-  //     if (_itemsPreloaded.isEmpty) return;
-  //     // 页码改变则返回
-  //     if (page == _page + 1) {
-  //       // print('CURRENT PAGE: $_page ===> PRELOAD PAGE: $page');
-  //     } else {
-  //       _itemsPreloaded = [];
-  //       return;
-  //     }
-  //     for (var model in _itemsPreloaded) {
-  //       ExtendedImage.network(model.coverUrl ?? '')
-  //           .image
-  //           .resolve(const ImageConfiguration());
-  //       // DynamicCacheImageProvider(model.coverUrl ?? '').resolve(const ImageConfiguration());
-  //     }
-  //   } catch (e) {
-  //     print(e);
-  //   }
-  // }
+// Future<void> _preload() async {
+//   if (_itemsPreloaded.isNotEmpty) return;
+//   final page = _page + 1;
+//   try {
+//     _itemsPreloaded = await _requestItems(page: page);
+//     // 为空则返回
+//     if (_itemsPreloaded.isEmpty) return;
+//     // 页码改变则返回
+//     if (page == _page + 1) {
+//       // print('CURRENT PAGE: $_page ===> PRELOAD PAGE: $page');
+//     } else {
+//       _itemsPreloaded = [];
+//       return;
+//     }
+//     for (var model in _itemsPreloaded) {
+//       ExtendedImage.network(model.coverUrl ?? '')
+//           .image
+//           .resolve(const ImageConfiguration());
+//       // DynamicCacheImageProvider(model.coverUrl ?? '').resolve(const ImageConfiguration());
+//     }
+//   } catch (e) {
+//     print(e);
+//   }
+// }
 }

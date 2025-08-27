@@ -19,6 +19,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:archive/archive.dart';
+import 'package:comic_nyaa/utils/public_api.dart';
 import '../model/data_origin.dart';
 
 import '../model/site.dart';
@@ -68,12 +69,17 @@ class SiteManager {
         final archive = ZipDecoder().decodeBytes(bytes);
         for (final entry in archive) {
           if (entry.isFile && entry.name.endsWith(ruleSuffix)) {
-            print(entry.name);
-            final site = loadJson(utf8.decode(entry.content));
-            sites.add(site);
-            if (site.id != null) _sites[site.id!] = site;
-            if (_targetInfo[file.path] == null) _targetInfo[file.path] = [];
-            _targetInfo[file.path]!.add(site);
+            try {
+              print(entry.name);
+              final site = loadJson(utf8.decode(entry.content));
+
+              sites.add(site);
+              _sites[site.id] = site;
+              if (_targetInfo[file.path] == null) _targetInfo[file.path] = [];
+              _targetInfo[file.path]!.add(site);
+            } catch (e) {
+              logger.w(e);
+            }
           }
         }
       }

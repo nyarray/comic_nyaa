@@ -32,8 +32,8 @@ class DomainFronting {
 }
 
 class Site {
-  String? name;
-  int? id;
+  late final int id;
+  late final String name;
   int? version;
   String? author;
   String? rating;
@@ -41,12 +41,13 @@ class Site {
   String? type;
   String? icon;
   Headers? headers;
-  Sections? sections;
+  late final Sections? sections;
   DomainFronting? domainFronting;
 
   Site(
-      {this.name,
-        this.id,
+      {
+        required this.id,
+        required this.name,
         this.version,
         this.author,
         this.rating,

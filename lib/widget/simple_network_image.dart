@@ -18,7 +18,7 @@
 import 'package:comic_nyaa/utils/uri_extensions.dart';
 import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
-import 'package:shimmer/shimmer.dart';
+import 'package:flutter_spinkit/flutter_spinkit.dart';
 
 class SimpleNetworkImage extends StatefulWidget {
   const SimpleNetworkImage(
@@ -81,14 +81,7 @@ class _SimpleNetworkImageState extends State<SimpleNetworkImage>
             if (widget.disableAnimation) return null;
             animationController?.reset();
             return widget.placeholder ??
-                Center(
-                    child: Shimmer.fromColors(
-                  baseColor: const Color.fromRGBO(240, 240, 240, 1),
-                  highlightColor: Colors.white,
-                  child: Container(
-                    color: Colors.white,
-                  ),
-                ));
+                const Center(child: SpinKitPulse(color: Colors.grey));
           case LoadState.failed:
             animationController?.forward();
             return widget.error ??

@@ -171,11 +171,7 @@ class _SimpleImageDetailViewState extends State<SimpleImageDetailView>
   }
 
   Widget _buildLoading() {
-    return const Center(
-        child: SpinKitSpinningLines(
-      color: Colors.teal,
-      size: 64,
-    ));
+    return const Center(child: SpinKitPulse(color: Colors.grey));
   }
 
   @override

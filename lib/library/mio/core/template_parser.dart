@@ -32,7 +32,7 @@ class TemplateParser {
   static eachSelector(
       Document doc, String selector, Function(String content, int index) each) {
     final matches = REG_SELECTOR_TEMPLATE.allMatches(selector);
-    if (matches.isEmpty) return;
+    if (matches.isEmpty) throw Exception("invalid selector: $selector");
     final match = matches.first;
     var select = match.groupCount > 0
         ? match.group(1)!

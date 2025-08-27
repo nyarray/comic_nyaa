@@ -15,56 +15,20 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import 'package:comic_nyaa/utils/public_api.dart';
+import 'package:comic_nyaa/notifier/drawer_end_notifier.dart';
+import 'package:comic_nyaa/state/drawer_end_state.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import '../../app/app_config.dart';
 import '../../library/mio/model/site.dart';
 import '../../widget/simple_network_image.dart';
 
-part 'nyaa_end_drawer.freezed.dart';
-
-@freezed
-abstract class EndDrawerState with _$EndDrawerState {
-  const factory EndDrawerState({
-    @Default({0: true}) Map<int, bool> expandState,
-    @Default(0.0) double scrollPosition,
-    @Default('') String banner,
-  }) = _EndDrawerState;
-}
-
-class EndDrawerNotifier extends Notifier<EndDrawerState> {
-  @override
-  EndDrawerState build() {
-    _init();
-    return const EndDrawerState();
-  }
-
-  
-  void _init() async {
-    final banner = await ref.watch(randomImageProvider(2).future); 
-     state = state.copyWith(banner: banner);
-  }
-
-  void setExpandState(Map<int, bool> expandState) {
-    state = state.copyWith(expandState: expandState);
-  }
-
-  void setScrollPosition(double scrollPosition) {
-    state = state.copyWith(scrollPosition: scrollPosition);
-  }
-
-  void setBanner(String banner) {
-    state = state.copyWith(banner: banner);
-  }
-}
-
 final provider =
-    NotifierProvider<EndDrawerNotifier, EndDrawerState>(EndDrawerNotifier.new);
+    NotifierProvider<DrawerEndNotifier, DrawerEndState>(DrawerEndNotifier.new);
 
-class NyaaEndDrawer extends ConsumerWidget {
-  NyaaEndDrawer({Key? key, required this.sites, this.onItemTap})
+class DrawerEndView extends HookConsumerWidget {
+  DrawerEndView({Key? key, required this.sites, this.onItemTap})
       : super(key: key);
 
   final List<Site> sites;
@@ -88,7 +52,7 @@ class NyaaEndDrawer extends ConsumerWidget {
   Widget build(context, ref) {
     final state = ref.watch(provider);
     final notifier = ref.read(provider.notifier);
-    
+
     final siteTypeMap = <String, List<Site>>{};
     for (final site in sites) {
       final type = site.type ?? 'unknown';
@@ -99,7 +63,27 @@ class NyaaEndDrawer extends ConsumerWidget {
       }
     }
     final group = siteTypeMap.entries.toList();
-    final drawer = Drawer(
+    // 添加监听器只执行一次
+    final scrollController = useScrollController();
+    useEffect(() {
+      void listener() {
+        notifier.setScrollPosition(scrollController.position.pixels);
+      }
+      scrollController.addListener(listener);
+      // 返回 dispose 方法
+      return () => scrollController.removeListener(listener);
+    }, [scrollController]);
+
+    useEffect(() {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (scrollController.hasClients) {
+          scrollController.jumpTo(state.scrollPosition);
+        }
+      });
+      return null;
+    }, []);
+
+    return Drawer(
         elevation: 8,
         child: ListView.builder(
             controller: _scrollController,
@@ -116,9 +100,9 @@ class NyaaEndDrawer extends ConsumerWidget {
                 ),
                 initiallyExpanded: state.expandState[index] ?? false,
                 onExpansionChanged: (isExpand) {
-                  final newMap = Map<int, bool>.from(state.expandState);
-                  newMap[index] = isExpand;
-                  notifier.setExpandState(newMap);
+                  final copy = Map<int, bool>.from(state.expandState);
+                  copy[index] = isExpand;
+                  notifier.setExpandState(copy);
                 },
                 title: Text(groupItem.key.toUpperCase(),
                     style: const TextStyle(fontSize: 18)),
@@ -141,7 +125,7 @@ class NyaaEndDrawer extends ConsumerWidget {
                                   size: 32),
                             ))),
                     title: Text(
-                      site.name ?? '',
+                      site.name,
                       style: const TextStyle(
                           fontFamily: AppConfig.uiFontFamily,
                           fontSize: 18,
@@ -162,18 +146,9 @@ class NyaaEndDrawer extends ConsumerWidget {
                 }),
               );
             }));
-    WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
-      if (_scrollController.positions.isNotEmpty) {
-        _scrollController.jumpTo(state.scrollPosition);
-        _scrollController.addListener(() {
-          // state.scrollPosition = _scrollController.position.pixels;
-        });
-      }
-    });
-    return drawer;
   }
 
-  Widget _buildHeader(EndDrawerState controller) {
+  Widget _buildHeader(DrawerEndState controller) {
     return Padding(
         padding: const EdgeInsets.only(bottom: 8),
         child: Material(

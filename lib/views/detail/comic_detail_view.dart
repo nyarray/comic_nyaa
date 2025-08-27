@@ -36,7 +36,8 @@ import 'package:comic_nyaa/data/download/nyaa_download_manager.dart';
 import 'package:comic_nyaa/views/main_view.dart';
 
 class ComicDetailView extends StatefulWidget {
-  const ComicDetailView({Key? key, required this.model, required this.heroKey}) : super(key: key);
+  const ComicDetailView({Key? key, required this.model, required this.heroKey})
+      : super(key: key);
   final title = '漫画';
   final String heroKey;
   final TypedModel model;
@@ -47,7 +48,8 @@ class ComicDetailView extends StatefulWidget {
   }
 }
 
-class _ComicDetailViewState extends State<ComicDetailView> with TickerProviderStateMixin {
+class _ComicDetailViewState extends State<ComicDetailView>
+    with TickerProviderStateMixin {
   final RefreshController _refreshController = RefreshController();
   final ScrollController _scrollController = ScrollController();
   final List<TypedModel> _children = [];
@@ -58,7 +60,8 @@ class _ComicDetailViewState extends State<ComicDetailView> with TickerProviderSt
 
   void _initialized() async {
     _scrollController.addListener(() {
-      if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent) {
+      if (_scrollController.position.pixels >=
+          _scrollController.position.maxScrollExtent) {
         while (_stream?.isPaused == true) {
           _stream?.resume();
         }
@@ -69,11 +72,14 @@ class _ComicDetailViewState extends State<ComicDetailView> with TickerProviderSt
     _tags.addAll(_model.tags?.split(' ').toSet() ?? {});
     final json = _model.toJson();
     //
-    _stream = Mio(_origin.site).parseChildren(item: json).listen((List<Map<String, dynamic>> data) {
+    _stream = Mio(_origin.site)
+        .parseChildren(item: json)
+        .listen((List<Map<String, dynamic>> data) {
       _stream?.pause();
       _getNext(data);
     });
-    _model = TypedModel.fromJson(await Mio(_origin.site).parseExtended(item: json));
+    _model =
+        TypedModel.fromJson(await Mio(_origin.site).parseExtended(item: json));
     setState(() {});
   }
 
@@ -108,8 +114,9 @@ class _ComicDetailViewState extends State<ComicDetailView> with TickerProviderSt
       Material(
           elevation: 4,
           child: Container(
-              color: Theme.of(context).primaryColor.withOpacity(.667),
-              padding: EdgeInsets.only(top: statusBarHeight + 8, bottom: 0, left: 0, right: 0),
+              color: Theme.of(context).primaryColor.withValues(alpha: .667),
+              padding: EdgeInsets.only(
+                  top: statusBarHeight + 8, bottom: 0, left: 0, right: 0),
               child: SizedBox(
                   height: 192,
                   child: Row(children: [
@@ -123,7 +130,7 @@ class _ComicDetailViewState extends State<ComicDetailView> with TickerProviderSt
                         child: Hero(
                             tag: widget.heroKey,
                             child: SimpleNetworkImage(
-                             _model.availableCoverUrl,
+                              _model.availableCoverUrl,
                               width: 120,
                               headers: _origin.site.headers,
                               disableAnimation: true,
@@ -133,48 +140,60 @@ class _ComicDetailViewState extends State<ComicDetailView> with TickerProviderSt
                     Expanded(
                       child: Container(
                           margin: const EdgeInsets.only(left: 8, top: 8),
-                          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                            Expanded(
-                                child: Text(
-                              _model.title ?? 'Unknown',
-                              maxLines: 5,
-                              style: const TextStyle(color: Colors.white, fontSize: 20),
-                            )),
-                            // Spacer(),
-                            Row(children: [
-                              Expanded(
-                                  child:
-                                      Text('${_children.length}页', style: const TextStyle(color: Colors.white, fontSize: 18))),
-                              IconButton(
-                                  padding: const EdgeInsets.all(4),
-                                  iconSize: 32,
-                                  onPressed: () {
-                                    RouteUtil.push(
-                                        context, ImageDetailView(models: _children, heroKey: widget.heroKey, index: 0));
-                                  },
-                                  icon: const Icon(
-                                    Icons.remove_red_eye,
-                                    color: Colors.white,
-                                  )),
-                              IconButton(
-                                  padding: const EdgeInsets.all(4),
-                                  iconSize: 32,
-                                  onPressed: () async {
-                                    (await NyaaDownloadManager.instance).add(_model);
-                                    Message.show(msg: '下载已添加：${_model.title}');
-                                  },
-                                  icon: const Icon(
-                                    Icons.download,
-                                    color: Colors.white,
-                                  )),
-                            ])
-                          ])),
+                          child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Expanded(
+                                    child: Text(
+                                  _model.title ?? 'Unknown',
+                                  maxLines: 5,
+                                  style: const TextStyle(
+                                      color: Colors.white, fontSize: 20),
+                                )),
+                                // Spacer(),
+                                Row(children: [
+                                  Expanded(
+                                      child: Text('${_children.length}页',
+                                          style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 18))),
+                                  IconButton(
+                                      padding: const EdgeInsets.all(4),
+                                      iconSize: 32,
+                                      onPressed: () {
+                                        RouteUtil.push(
+                                            context,
+                                            ImageDetailView(
+                                                models: _children,
+                                                heroKey: widget.heroKey,
+                                                index: 0));
+                                      },
+                                      icon: const Icon(
+                                        Icons.remove_red_eye,
+                                        color: Colors.white,
+                                      )),
+                                  IconButton(
+                                      padding: const EdgeInsets.all(4),
+                                      iconSize: 32,
+                                      onPressed: () async {
+                                        (await NyaaDownloadManager.instance)
+                                            .add(_model);
+                                        Message.show(
+                                            msg: '下载已添加：${_model.title}');
+                                      },
+                                      icon: const Icon(
+                                        Icons.download,
+                                        color: Colors.white,
+                                      )),
+                                ])
+                              ])),
                     )
                   ])))),
       Container(
           margin: const EdgeInsets.only(top: 8),
           padding: const EdgeInsets.only(bottom: 8),
-          decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Colors.black12))),
+          decoration: const BoxDecoration(
+              border: Border(bottom: BorderSide(color: Colors.black12))),
           child: Column(children: [
             NyaaTags(
                 itemCount: tags.length,
@@ -182,7 +201,11 @@ class _ComicDetailViewState extends State<ComicDetailView> with TickerProviderSt
                       text: tags[index],
                       color: Colors.teal,
                       onTap: () {
-                        RouteUtil.push(context, MainView(site: _model.getOrigin().site, keywords: tags[index]));
+                        RouteUtil.push(
+                            context,
+                            MainView(
+                                site: _model.getOrigin().site,
+                                keywords: tags[index]));
                       },
                     ))
           ]))
@@ -202,7 +225,8 @@ class _ComicDetailViewState extends State<ComicDetailView> with TickerProviderSt
       child: SmartRefresher(
           controller: _refreshController,
           scrollController: _scrollController,
-          header: SliverToBoxAdapter(child: _buildHeader(statusBarHeight, tags)),
+          header:
+              SliverToBoxAdapter(child: _buildHeader(statusBarHeight, tags)),
           child: _children.isNotEmpty
               ? MasonryGridView.count(
                   controller: _scrollController,
@@ -218,7 +242,8 @@ class _ComicDetailViewState extends State<ComicDetailView> with TickerProviderSt
                     return Material(
                         shadowColor: Colors.black45,
                         elevation: 2,
-                        borderRadius: const BorderRadius.all(Radius.circular(2.0)),
+                        borderRadius:
+                            const BorderRadius.all(Radius.circular(2.0)),
                         child: InkStack(
                             onTap: () => RouteUtil.push(
                                 context,
@@ -249,11 +274,7 @@ class _ComicDetailViewState extends State<ComicDetailView> with TickerProviderSt
                               )
                             ]));
                   })
-              : const Center(
-                  child: SpinKitSpinningLines(
-                  color: Colors.teal,
-                  size: 64,
-                ))),
+              : const Center(child: SpinKitPulse(color: Colors.grey))),
     ));
   }
 

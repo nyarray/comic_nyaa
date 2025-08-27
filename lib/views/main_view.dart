@@ -17,11 +17,14 @@
 
 import 'dart:async';
 import 'package:collection/collection.dart';
+import 'package:comic_nyaa/state/gallery_state.dart';
+import 'package:comic_nyaa/utils/extensions.dart';
 import 'package:comic_nyaa/utils/fixed_queue.dart';
 import 'package:comic_nyaa/utils/message.dart';
+import 'package:comic_nyaa/utils/public_api.dart';
 import 'package:comic_nyaa/views/search_view.dart';
 import 'package:comic_nyaa/widget/back_control.dart';
-import 'package:comic_nyaa/views/drawer/nyaa_end_drawer.dart';
+import 'package:comic_nyaa/views/drawer/drawer_end_view.dart';
 import 'package:comic_nyaa/widget/empty_data.dart';
 import 'package:comic_nyaa/widget/simple_network_image.dart';
 import 'package:flutter/material.dart';
@@ -33,9 +36,10 @@ import 'package:comic_nyaa/models/typed_model.dart';
 import 'package:comic_nyaa/views/pages/gallery_view.dart';
 
 import 'package:comic_nyaa/data/subscribe/subscribe_manager.dart';
-import 'package:comic_nyaa/views/drawer/nyaa_drawer.dart';
+import 'package:comic_nyaa/views/drawer/drawer_view.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class MainView extends StatefulWidget {
+class MainView extends ConsumerStatefulWidget {
   const MainView(
       {Key? key, this.site, this.keywords, this.enableBackControl = false})
       : super(key: key);
@@ -44,10 +48,16 @@ class MainView extends StatefulWidget {
   final bool enableBackControl;
 
   @override
-  State<MainView> createState() => MainViewState();
+  ConsumerState<ConsumerStatefulWidget> createState() {
+    return MainViewState();
+  }
+
+  // @override
+  // State<MainView> createState() => MainViewState();
 }
 
-class MainViewState extends State<MainView> with TickerProviderStateMixin {
+class MainViewState extends ConsumerState<MainView>
+    with TickerProviderStateMixin {
   final globalKey = GlobalKey<ScaffoldState>();
 
   // final FloatingSearchBarController _floatingSearchBarController =
@@ -81,11 +91,11 @@ class MainViewState extends State<MainView> with TickerProviderStateMixin {
 
   Future<void> _initialize() async {
     await _checkPluginsUpdate();
-    final sites = await SiteManager.loadFormDirectory(
-        "E:/Projects/@nyarray/comic_nyaa/default");
+    // final sites = await SiteManager.loadFormDirectory(
+    //     "E:/Projects/@nyarray/comic_nyaa/default");
+    // _sites = sites;
     setState(() {
-      // _sites = SiteManager.sites.values.toList();
-      _sites = sites;
+      _sites = SiteManager.sites.values.toList();
       // 打开默认标签
       if (widget.site != null) {
         _newView(widget.site!);
@@ -93,9 +103,11 @@ class MainViewState extends State<MainView> with TickerProviderStateMixin {
         _newView(
             _sites.firstWhereOrNull((site) => site.id == 920) ?? _sites[0]);
       }
-
       _listenGalleryScroll();
-      _view?.controller.onItemSelect = _onGalleryItemSelected;
+      _view?.let((it) {
+        final provider = galleryProvider(it.site.id);
+        ref.read(provider.notifier).setOnItemSelect(_onGalleryItemSelected);
+      });
     });
     WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
       if (widget.keywords != null) {
@@ -113,13 +125,13 @@ class MainViewState extends State<MainView> with TickerProviderStateMixin {
   }
 
   Future<void> downloadSelections() async {
-    List<TypedModel> items = _view!.controller.selects.values.toList();
-    Message.show(msg: '${items.length}个任务已添加');
+    if (_view == null) return;
 
+    final state = ref.watch(galleryProvider(_view!.site.id));
+    List<TypedModel> items = state.selects.values.toList();
+    Message.show(msg: '${items.length}个任务已添加');
     (await NyaaDownloadManager.instance).addAll(items);
-    setState(() {
-      _view?.controller.clearSelection();
-    });
+    state.clearSelection();
   }
 
   @override
@@ -135,10 +147,13 @@ class MainViewState extends State<MainView> with TickerProviderStateMixin {
         // for (var item in _galleryList) {
         //   item.controller.scrollController?.removeListener(_onGalleryScroll);
         // }
-        _viewScrollController = _view?.controller.scrollController;
-        if (_viewScrollController == null) return;
-        _onGalleryScroll();
-        _viewScrollController!.addListener(_onGalleryScroll);
+        _view?.let((view) {
+          _viewScrollController =
+              ref.watch(galleryProvider(view.site.id)).scrollController;
+          if (_viewScrollController == null) return;
+          _onGalleryScroll();
+          _viewScrollController!.addListener(_onGalleryScroll);
+        });
       }
     });
   }
@@ -173,8 +188,12 @@ class MainViewState extends State<MainView> with TickerProviderStateMixin {
     setState(() {});
   }
 
+  GalleryState? get currentViewState {
+    return _view != null ? ref.watch(galleryProvider(_view!.site.id)) : null;
+  }
+
   void _onSearch(String query) async {
-    _view?.controller.search?.call(query);
+    currentViewState?.search?.call(query);
   }
 
   @override
@@ -186,7 +205,7 @@ class MainViewState extends State<MainView> with TickerProviderStateMixin {
       drawerEnableOpenDragGesture: true,
       endDrawerEnableOpenDragGesture: true,
       resizeToAvoidBottomInset: false,
-      drawer: const NyaaDrawer(),
+      drawer: const DrawerView(),
       endDrawer: _buildEndDrawer(),
       floatingActionButton: _buildFab(),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
@@ -198,7 +217,7 @@ class MainViewState extends State<MainView> with TickerProviderStateMixin {
   }
 
   Widget _buildEndDrawer() {
-    return NyaaEndDrawer(
+    return DrawerEndView(
       sites: _sites,
       onItemTap: (site) {
         _newView(site);
@@ -215,8 +234,14 @@ class MainViewState extends State<MainView> with TickerProviderStateMixin {
             width: 32,
             height: 32,
             padding: const EdgeInsets.only(right: 8),
-            child: SimpleNetworkImage(_view?.site.icon ?? '')),
-        Text(_view?.site.name ?? 'ComicNyaa')
+            child: _view?.site.icon?.let((it) => SimpleNetworkImage(it)) ??
+                Container(color: Colors.grey.shade300)),
+        Flexible(
+            child: Text(
+          _view?.site.name ?? 'ComicNyaa',
+          overflow: TextOverflow.ellipsis,
+          maxLines: 1,
+        ))
       ]),
       actions: [
         _buildFloatingSearchBar(),
@@ -246,13 +271,14 @@ class MainViewState extends State<MainView> with TickerProviderStateMixin {
   }
 
   Widget _buildFab() {
+    if (_view == null) return Container();
+    final state = ref.watch(galleryProvider(_view!.site.id));
     return Container(
         margin: const EdgeInsets.only(bottom: 48),
-        child: _view?.controller.selects.isEmpty == true
+        child: state.selects.isEmpty == true
             ? FloatingActionButton(
                 backgroundColor: Colors.white,
-                onPressed: () => _view?.controller.scrollController?.animateTo(
-                    0,
+                onPressed: () => state.scrollController?.animateTo(0,
                     duration: const Duration(milliseconds: 1000),
                     curve: Curves.ease),
                 tooltip: 'Top',
@@ -281,9 +307,7 @@ class MainViewState extends State<MainView> with TickerProviderStateMixin {
           icon: const Icon(Icons.search)),
       controller: controller,
       onClose: () => setState(() => _isSearching = false),
-      onSearch: (query) {
-        _onSearch(query);
-      },
+      onSearch: _onSearch
     );
   }
 
