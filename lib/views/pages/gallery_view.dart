@@ -82,19 +82,18 @@ class GalleryViewState extends ConsumerState<GalleryView>
   GalleryNotifier get notifier => ref.read(provider.notifier);
 
   Future<void> _initialize() async {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
     final state = ref.watch(provider);
     final notifier = ref.read(provider.notifier);
 
-    notifier.setClearSelection(_clearSelections);
-    notifier.setScrollController(_scrollController);
-    notifier.setRefresh(_refreshController.requestRefresh);
-    notifier.setSearch((String query) async {
-      _query = query;
-      await _refreshController.requestRefresh();
-    });
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
+      notifier.setClearSelection(_clearSelections);
+      notifier.setScrollController(_scrollController);
+      notifier.setRefresh(_refreshController.requestRefresh);
+      notifier.setSearch((String query) async {
+        _query = query;
+        await _refreshController.requestRefresh();
+      });
       _refreshController.requestRefresh();
       _scrollController.addListener(() {
         if (_scrollController.position.pixels >=
@@ -214,9 +213,7 @@ class GalleryViewState extends ConsumerState<GalleryView>
 
   @override
   void initState() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _initialize();
-    });
+    _initialize();
     super.initState();
   }
 
@@ -315,7 +312,9 @@ class GalleryViewState extends ConsumerState<GalleryView>
                                 switch (state.extendedImageLoadState) {
                                   case LoadState.loading:
                                     controller.reset();
-                                    return const Center(child: SpinKitPulse(color: Colors.grey));
+                                    return const Center(
+                                        child:
+                                            SpinKitPulse(color: Colors.grey));
                                   case LoadState.failed:
                                     return const AspectRatio(
                                         aspectRatio: 0.60,
@@ -375,12 +374,13 @@ class GalleryViewState extends ConsumerState<GalleryView>
     super.didUpdateWidget(oldWidget);
 
     if (widget.site.id != oldWidget.site.id) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (state.items.isEmpty && !_isLoading) {
-          _reset();
-          _refreshController.requestRefresh();
-        }
-      });
+      _initialize();
+      // WidgetsBinding.instance.addPostFrameCallback((_) {
+      //   if (state.items.isEmpty && !_isLoading) {
+      //     _reset();
+      //     _refreshController.requestRefresh();
+      //   }
+      // });
       print(
           'didUpdateWidget:::::: NAME: ${oldWidget.site.name} >>>>>>>> ${widget.site.name}');
     }

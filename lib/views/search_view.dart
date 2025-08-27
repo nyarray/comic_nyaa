@@ -55,8 +55,10 @@ class SearchView extends ConsumerWidget {
                 return ListTile(
                   title: Text(item.label),
                   onTap: () {
-                    controller.closeView(item.label);
-                    onSearch?.call(item.label);
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      controller.closeView(item.label);
+                      onSearch?.call(item.label);
+                    });
                   },
                 );
               });

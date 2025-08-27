@@ -64,6 +64,7 @@ class MainViewState extends ConsumerState<MainView>
   //     FloatingSearchBarController();
   final RecyclerQueue<GalleryView> _viewQueue = RecyclerQueue(1);
   ScrollController? _viewScrollController;
+  final SearchController searchController = SearchController();
   List<Site> _sites = [];
   // List<Tag> _autoSuggest = [];
   int _lastScrollPosition = 0;
@@ -193,6 +194,7 @@ class MainViewState extends ConsumerState<MainView>
   }
 
   void _onSearch(String query) async {
+    print(currentViewState);
     currentViewState?.search?.call(query);
   }
 
@@ -257,12 +259,12 @@ class MainViewState extends ConsumerState<MainView>
   }
 
   GalleryView _buildView(Site site) {
-    const color = Colors.white;
+    final color = Theme.of(context).colorScheme.secondary;
     return GalleryView(
       site: site,
       heroKey: site.id.toString(),
       // color: color,
-      empty: const EmptyData(
+      empty: EmptyData(
         text: '无可用数据',
         color: color,
         textColor: color,
@@ -298,14 +300,13 @@ class MainViewState extends ConsumerState<MainView>
     // final isPortrait =
     // MediaQuery.of(context).orientation == Orientation.portrait;
     // final topPadding = MediaQuery.of(context).padding.top;
-    final controller = SearchController();
     return SearchView(
       iconBuilder: (context, controller) => IconButton(
           // constraints: const BoxConstraints.expand(),
           alignment: Alignment.center,
           onPressed: () => controller.openView(),
           icon: const Icon(Icons.search)),
-      controller: controller,
+      controller: searchController,
       onClose: () => setState(() => _isSearching = false),
       onSearch: _onSearch
     );

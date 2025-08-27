@@ -92,8 +92,11 @@ class _ComicNyaaState extends State<ComicNyaa> {
       debugShowCheckedModeBanner: false,
       title: AppConfig.appName,
       theme: ThemeData(
-        // fontFamily: 'ComicNeue',
-        primarySwatch: Colors.teal,
+        useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.pinkAccent, // 默认种子色
+          brightness: Brightness.light,
+        ),
       ),
       localeResolutionCallback: (deviceLocale, supportedLocales) {
         location(deviceLocale, supportedLocales);
