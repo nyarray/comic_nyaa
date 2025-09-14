@@ -57,6 +57,29 @@ class SiteManager {
     return _targetInfo;
   }
 
+  static Future<List<Site>> loadFormDirectory(Directory dir,
+      {String ruleSuffix = '.json'}) async {
+    final sites = <Site>[];
+    await for (final file in dir.list(recursive: true)) {
+      final isAllow = file.path.endsWith(ruleSuffix);
+      if (isAllow) {
+        final json = File(file.path).readAsStringSync();
+        try {
+          print(file.path);
+          final site = loadJson(json);
+
+          sites.add(site);
+          _sites[site.id] = site;
+          if (_targetInfo[file.path] == null) _targetInfo[file.path] = [];
+          _targetInfo[file.path]!.add(site);
+        } catch (e) {
+          logger.w(e);
+        }
+      }
+    }
+    return sites;
+  }
+
   /// 从目录加载规则，默认加载所有.zip文件（不递归）
   ///
   static Future<List<Site>> loadFormZips(Directory dir,
@@ -93,17 +116,17 @@ class SiteManager {
     return Site.fromJson(jsonMap);
   }
 
-  static Future<List<Site>> loadFormDirectory(String dir,
-      {String ruleSuffix = '.json'}) async {
-    final sites = <Site>[];
-    await for (final file in Directory(dir).list(recursive: true)) {
-      final isAllow = file.path.endsWith(ruleSuffix);
-      if (isAllow) {
-        final json = await File.fromUri(file.uri).readAsString();
-        final site = loadJson(json);
-        sites.add(site);
-      }
-    }
-    return sites;
-  }
+  // static Future<List<Site>> loadFormDirectory(String dir,
+  //     {String ruleSuffix = '.json'}) async {
+  //   final sites = <Site>[];
+  //   await for (final file in Directory(dir).list(recursive: true)) {
+  //     final isAllow = file.path.endsWith(ruleSuffix);
+  //     if (isAllow) {
+  //       final json = await File.fromUri(file.uri).readAsString();
+  //       final site = loadJson(json);
+  //       sites.add(site);
+  //     }
+  //   }
+  //   return sites;
+  // }
 }

@@ -16,6 +16,7 @@
  */
 
 import 'dart:async';
+import 'dart:io';
 import 'package:collection/collection.dart';
 import 'package:comic_nyaa/state/gallery_state.dart';
 import 'package:comic_nyaa/utils/extensions.dart';
@@ -91,18 +92,18 @@ class MainViewState extends ConsumerState<MainView>
   }
 
   Future<void> _initialize() async {
-    await _checkPluginsUpdate();
-    // final sites = await SiteManager.loadFormDirectory(
-    //     "E:/Projects/@nyarray/comic_nyaa/default");
-    // _sites = sites;
-    setState(() {
+    // await _checkPluginsUpdate();
+      // 测试用
+    await SiteManager.loadFormDirectory(Directory("E:/Projects/@nyarray/comic_nyaa/default"));
+
+    setState(() {    
       _sites = SiteManager.sites.values.toList();
       // 打开默认标签
       if (widget.site != null) {
         _newView(widget.site!);
       } else {
-        _newView(
-            _sites.firstWhereOrNull((site) => site.id == 920) ?? _sites[0]);
+        final defaultSite = _sites.firstWhereOrNull((site) => site.id == 920);
+        _newView(defaultSite ?? _sites[0]);
       }
       _listenGalleryScroll();
       _view?.let((it) {

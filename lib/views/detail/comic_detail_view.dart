@@ -62,7 +62,7 @@ class _ComicDetailViewState extends State<ComicDetailView>
     _scrollController.addListener(() {
       if (_scrollController.position.pixels >=
           _scrollController.position.maxScrollExtent) {
-        while (_stream?.isPaused == true) {
+        if (_stream?.isPaused == true) {
           _stream?.resume();
         }
       }
@@ -76,14 +76,15 @@ class _ComicDetailViewState extends State<ComicDetailView>
         .parseChildren(item: json)
         .listen((List<Map<String, dynamic>> data) {
       _stream?.pause();
-      _getNext(data);
+      _updateNext(data);
+      print(data);
     });
     _model =
         TypedModel.fromJson(await Mio(_origin.site).parseExtended(item: json));
     setState(() {});
   }
 
-  _getNext(List<Map<String, dynamic>> data) async {
+  _updateNext(List<Map<String, dynamic>> data) async {
     try {
       final models = data.map((item) => TypedModel.fromJson(item)).toList();
       if (models.isNotEmpty) {
@@ -100,7 +101,6 @@ class _ComicDetailViewState extends State<ComicDetailView>
       Message.show(msg: 'ERROR: ${e.toString()}');
       print('ERROR: ${e.toString()}');
     }
-    return data;
   }
 
   @override
@@ -244,7 +244,8 @@ class _ComicDetailViewState extends State<ComicDetailView>
                         elevation: 2,
                         borderRadius:
                             const BorderRadius.all(Radius.circular(2.0)),
-                        child: InkStack(
+                        child:
+                         InkStack(
                             onTap: () => RouteUtil.push(
                                 context,
                                 ImageDetailView(

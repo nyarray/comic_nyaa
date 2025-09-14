@@ -63,6 +63,7 @@ dependencies:
   freezed_annotation: ^3.1.0
   html: ^0.15.6
   flutter_hooks: ^0.21.3+1
+  xpath_selector_html_parser: ^3.0.1
   
 dev_dependencies:
   # Rebuild Icon: OLD: flutter pub run flutter_launcher_icons:main

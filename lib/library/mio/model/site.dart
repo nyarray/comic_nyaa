@@ -152,6 +152,7 @@ class Rules extends BaseMap<String, Selector> {
 
 class Selector {
   String? regex;
+  String? xpath;
   String? selector;
   String? capture;
   String? replacement;
@@ -161,10 +162,11 @@ class Selector {
   Rules? rules; // $children only
   Rules? parent; // $children only
 
-  Selector({this.regex, this.selector, this.capture, this.replacement, this.flat, this.inherit, this.rules});
+  Selector({this.regex, this.xpath, this.selector, this.capture, this.replacement, this.flat, this.inherit, this.rules});
 
   Selector.fromJson(Map<String, dynamic> json) {
     regex = json['regex'];
+    xpath = json['xpath'];
     selector = json['selector'];
     capture = json['capture'];
     replacement = json['replacement'];
@@ -178,6 +180,7 @@ class Selector {
   Map<String, dynamic> toJson() {
     final Map<String, dynamic> data = <String, dynamic>{};
     data['regex'] = regex;
+    data['xpath'] = xpath;
     data['selector'] = selector;
     data['capture'] = capture;
     data['replacement'] = replacement;

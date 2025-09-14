@@ -88,7 +88,6 @@ class _ImageDetailViewState extends State<ImageDetailView>
       });
     } catch (e) {
       Message.show(msg: e.toString());
-      rethrow;
     }
   }
 

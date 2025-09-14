@@ -16,6 +16,7 @@
  */
 
 import 'dart:async';
+import 'dart:io';
 
 import 'package:comic_nyaa/notifier/gallery_notifier.dart';
 import 'package:comic_nyaa/state/gallery_state.dart';
@@ -84,8 +85,7 @@ class GalleryViewState extends ConsumerState<GalleryView>
   Future<void> _initialize() async {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-    final state = ref.watch(provider);
-    final notifier = ref.read(provider.notifier);
+      final notifier = ref.read(provider.notifier);
 
       notifier.setClearSelection(_clearSelections);
       notifier.setScrollController(_scrollController);
@@ -250,7 +250,7 @@ class GalleryViewState extends ConsumerState<GalleryView>
                 ? MasonryGridView.count(
                     // padding: EdgeInsets.fromLTRB(8, _topOffset + 8, 8, 0),
                     padding: const EdgeInsets.all(8.0),
-                    crossAxisCount: 3,
+                    crossAxisCount: Platform.isAndroid ? 3 : 5,
                     mainAxisSpacing: 8.0,
                     crossAxisSpacing: 8.0,
                     itemCount: state.items.length,

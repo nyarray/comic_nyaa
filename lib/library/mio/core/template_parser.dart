@@ -17,19 +17,29 @@
 
 import 'package:collection/collection.dart';
 import 'package:html/dom.dart';
+import 'package:xpath_selector_html_parser/xpath_selector_html_parser.dart';
 
 class TemplateParser {
-
-  static final REG_PAGE_TEMPLATE = RegExp(r"\{page\s*?:\s*?(-?\d*)[,\s]*?(-?\d*?)\}");
+  static final REG_PAGE_TEMPLATE =
+      RegExp(r"\{page\s*?:\s*?(-?\d*)[,\s]*?(-?\d*?)\}");
   static final REG_PAGE_MATCH = RegExp(r"\{page\s*?:.*?\}");
   static final REG_KEYWORD_TEMPLATE = RegExp(r"\{keywords\s*?:\s*?(.*?)\}");
   static final REG_KEYWORD_MATCH = RegExp(r"\{keywords\s*?:.*?\}");
   static final REG_SELECTOR_TEMPLATE = RegExp(r"\$\((.+?)\)\.(\w+?)\((.*?)\)");
+
+  static matchXPath(
+      Document doc, String selector, Function(String content, int index) each) {
+    final xpath = HtmlXPath.node(doc.documentElement!);
+    final results = xpath.query(selector);
+    print(results.attrs);
+    results.attrs.forEachIndexed((i, item) => each(item ?? '', i));
+  }
+
   /// 遍历选择器
   /// @param {cheerio.CheerioAPI} $ 文档上下文
   /// @param {string} selector 选择器
   /// @param {function} each (content: string, index: number) => void
-  static eachSelector(
+  static matchSelector(
       Document doc, String selector, Function(String content, int index) each) {
     final matches = REG_SELECTOR_TEMPLATE.allMatches(selector);
     if (matches.isEmpty) throw Exception("invalid selector: $selector");
@@ -102,13 +112,13 @@ class TemplateParser {
       // print('TEMPLATE: [$template], page: [$page], keywords: [$keywords]');
       // print('MATCHES: ${pageMatch.groupCount}, G0: [${pageMatch.group(0)}], G1: [${pageMatch.group(1)}], G2: [${pageMatch.group(2)}]');
       final offset =
-      pageMatch.groupCount > 0 && (pageMatch.group(1)?.isNotEmpty ?? false)
-          ? int.parse(pageMatch.group(1) ?? '0')
-          : 0;
+          pageMatch.groupCount > 0 && (pageMatch.group(1)?.isNotEmpty ?? false)
+              ? int.parse(pageMatch.group(1) ?? '0')
+              : 0;
       final range =
-      pageMatch.groupCount > 1 && (pageMatch.group(2)?.isNotEmpty ?? false)
-          ? int.parse(pageMatch.group(2) ?? '1')
-          : 1;
+          pageMatch.groupCount > 1 && (pageMatch.group(2)?.isNotEmpty ?? false)
+              ? int.parse(pageMatch.group(2) ?? '1')
+              : 1;
 
       // print('BEFORE FINAL PAGE: [$p] offset: [$offset], range: [$range]');
       p = (p + offset) * range;

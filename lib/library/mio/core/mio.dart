@@ -34,7 +34,8 @@ class Mio<T extends DataModel> {
   String? _keywords;
   String? _sectionName;
 
-  static Future<String> Function(String url, {Map<String, String>? headers}) get requestAsText => _request;
+  static Future<String> Function(String url, {Map<String, String>? headers})
+      get requestAsText => _request;
 
   static Future<String> Function(String url, {Map<String, String>? headers})
       _request = (url, {Map<String, String>? headers}) async {
@@ -66,8 +67,7 @@ class Mio<T extends DataModel> {
 
   /// 解析Site对象，返回结果集
   /// @returns {Promise<<T extends Meta>[]>}
-  Future<List<Map<String, dynamic>>> parseSite(
-      [bool isParseChildren = false]) {
+  Future<List<Map<String, dynamic>>> parseSite([bool isParseChildren = false]) {
     final site = _site;
     final sectionName = currentSectionName;
     if (site == null) throw Exception('Site cannot be null!');
@@ -232,18 +232,18 @@ class Mio<T extends DataModel> {
       List<String> keys = [];
       do {
         final url = TemplateParser.parseUrl(urlTemplate, page, '');
-        // print('parseChildren(): URL: $url');
+        print('parseChildren(): URL: $url');
         // 发送请求
         final html = await _requestText(url, headers: site.headers);
-        // print('PARSE CHILDREN START =======================================');
+        print('PARSE CHILDREN START =======================================');
         final List<Map<String, dynamic>> children =
             parseRulesFromHtml(html, childrenSelector!.rules!);
         if (children.isEmpty) break;
-        // print('parseChildren(): PARSE CHILDREN LENGTH ======================================= ${children.length}');
+        print('parseChildren(): PARSE CHILDREN LENGTH ======================================= ${children.length}');
         final List<String> newKeys = isMulitPage
             ? children.map((item) => item[k$key].toString()).toList()
             : [];
-        // print('parseChildren(): PARSE EQ ======================================= $keys === $newKeys');
+        print('parseChildren(): PARSE EQ ======================================= $keys === $newKeys');
         if (isMulitPage && equalsKeys(keys, newKeys)) break;
         keys = newKeys;
         page++;
@@ -282,9 +282,7 @@ class Mio<T extends DataModel> {
           item[fieldChildren] != null
               ? item[fieldChildren]?.addAll(children)
               : (item[fieldChildren] = children);
-          // print('YIDLE START =======================================');
           yield children;
-          // print('YIDLE END =======================================');
         }
       } while (isMulitPage && keys.isNotEmpty);
     }
@@ -309,15 +307,21 @@ class Mio<T extends DataModel> {
     for (final k in rule.keys) {
       final exp = rule[k]!;
       final props = <String>[];
+
+      void fnAddProp(result, _) {
+        final value =
+            TemplateParser.parseRegex(result, exp.capture, exp.replacement);
+        props.add(value);
+      }
+
       // 使用正则匹配
       if (exp.regex != null) {
         var content = doc.outerHtml;
-        // 匹配选择器内容
-        if (exp.selector != null) {
-          // 此处的选择器只应选择一个元素，否则result会被刷新为最后一个
-          TemplateParser.eachSelector(
-              doc, exp.selector!, (result, index) => (content = result));
-        }
+        // 弃用, 多次匹配过于复杂且使用场景极少
+        // if (exp.xpath != null) {
+        //   TemplateParser.eachXPath(
+        //       doc, exp.xpath!, (result, _) => (content = result));
+        // }
         // 匹配正则内容
         final regexp = RegExp(exp.regex ?? '');
         final groups = List.of(regexp.allMatches(content));
@@ -328,15 +332,12 @@ class Mio<T extends DataModel> {
               match ?? '', exp.capture, exp.replacement);
           props.add(value);
         });
+        // 使用XPath匹配
+      } else if (exp.xpath != null) {
+        TemplateParser.matchXPath(doc, exp.xpath!, fnAddProp);
         // 使用选择器匹配
       } else if (exp.selector != null) {
-        TemplateParser.eachSelector(doc, exp.selector as String,
-            (result, index) {
-          // 执行最终替换，并添加到结果集
-          final value =
-              TemplateParser.parseRegex(result, exp.capture, exp.replacement);
-          props.add(value);
-        });
+        TemplateParser.matchSelector(doc, exp.selector!, fnAddProp);
       }
       // 组合数据
       if (exp.merge == true) {
@@ -391,6 +392,7 @@ class Mio<T extends DataModel> {
   /// 获取当前板块
   /// @returns {Section}
   String? get currentSectionName {
-    return _sectionName ?? (_keywords == null || _keywords!.trim().isEmpty ? 'home' : 'search');
+    return _sectionName ??
+        (_keywords == null || _keywords!.trim().isEmpty ? 'home' : 'search');
   }
 }
